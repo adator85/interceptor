@@ -1,0 +1,21 @@
+      
+    - Role of the app:
+        - Analysing logs files throught (journalctl) in real time 
+        - Using .json files for configuration    
+    
+    - Fonctionnalities:
+        - Modular system:
+            - sshd:
+                - Create rules => DONE
+                - Create a heartbeat => DONE
+                - Check if intrusion by ip > limit
+                    - if yes include the ip in the iptables
+            - proftpd:
+    
+    - Fonctionnalités opérationnelle de l'application:
+        - Le systeme devra analyser les logs et faire des actions sur ces ip's
+            - Identifier les ip's
+            - Analyser les ip's avec abusedbip
+            - Enregistrer les ip's dans une base de données
+            - Bannir les ip's dans iptable
+            - Libérer les ip's au bout de 24 heures
