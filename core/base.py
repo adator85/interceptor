@@ -14,7 +14,7 @@ class Base:
 
     def __init__(self) -> None:
 
-        self.VERSION  = '0.2.0'                                 # MAJOR.MINOR.BATCH
+        self.VERSION  = '1.3.0'                                 # MAJOR.MINOR.BATCH
         self.HOSTNAME = socket.gethostname()                    # Hostname of the local machine
         self.IPV4     = socket.gethostbyname(self.HOSTNAME)     # Local ipv4 of the local machine
         self.PULSE    = 5                                       # Pulse in seconds 

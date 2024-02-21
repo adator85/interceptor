@@ -1,0 +1,17 @@
+{
+    "process": "dovecot",
+    "rgx_process_name": "^.*(dovecot).*$",
+    "rgx_process_id": "^.*dovecot\\[(\\d*)\\].*$",
+    "filters": {
+        "auth_failure": "^.*(imap-login: Disconnected \\(auth failed).*$",
+        "invalid_command": "^.*(imap-login: Disconnected: Too many invalid commands|pop3-login: Disconnected: Too many bad commands|pop3-login: Disconnected \\(tried to use unsupported auth mechanism\\)).*$"
+    },
+    "filters_ip": {
+        "rip": "^.*rip=(\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}).*$"
+    },
+    "exceptions": ["192.168.1.11","192.168.1.10"],
+    "actions": {
+        "attempt": 4,
+        "ban_duration": 30
+    }
+}

@@ -69,6 +69,16 @@ class Intercept:
         process_id = self.get_process_id(output)
         modules:dict[any, dict] = self.Parser.all_modules
         
+        # Chercher si un filtre regex est crée dans .json
+        if ip == self.default_ip:
+            for key, ip_filters in modules[process].items():
+                if type(ip_filters) == dict and key == 'filters_ip':
+                    for ip_filter in ip_filters:
+                        lookup_ip_filter = re.match(ip_filter, output)
+                        if lookup_ip_filter:
+                            search = list(lookup_ip_filter.groups())
+                            ip = search[0]
+
         # Charger les exceptions du process en cours
         for key, exception in modules[process].items():
             if type(exception) == list and key == 'exceptions':
@@ -81,8 +91,16 @@ class Intercept:
                 for filter_name, filter_value in filters.items():
                     lookup = re.search(filter_value, output)
                     if lookup:
-                        # Exception ne sera enregistrer dans la base de données.
-                        if not ip in ip_exceptions:
+                        
+                        # Si l'ip est dans liste d'exception globale
+                        if ip in self.Parser.global_ip_exceptions:
+                            self.Base.log_print(f'Global exception - [{ip}] was exempted from the analysis ...', 'red')
+                        
+                        # Si l'ip est dans la liste de l'exception du module
+                        elif ip in ip_exceptions:
+                            self.Base.log_print(f'Module "{process}" exception - [{ip}] was exempted from the analysis ...', 'red')
+                        
+                        else:
                             self.Base.db_record_ip(process_id, process, ip, filter_name, user)
                             self.Base.log_print(f'{process} - {filter_name} - {process_id} - {ip} - {user} - recorded', 'white')
                             self.execute_action(ip)

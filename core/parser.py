@@ -5,12 +5,15 @@ class Parser:
 
     def __init__(self, base:base.Base) -> None:
 
-        self.Base = base        
+        self.Base = base
         self.all_modules:dict = {}
+        self.global_configuration:dict[any, dict] = {}
+        self.global_ip_exceptions:list = []
 
         self.process:list = []              # List of processes ()
         self.filenames:list = []            # Liste contenant le nom des fichiers
-
+        
+        self.load_global_json_configuration()
         self.load_json_configuration()
         self.parse_json()
 
@@ -19,6 +22,23 @@ class Parser:
     def load_all_modules(self, json_data:dict) -> None:
 
         self.all_modules[json_data['process']] = json_data
+
+        return None
+
+    def load_global_json_configuration(self) -> None:
+        """Load global configuration file        
+        """
+        
+        filename = f'core{os.sep}global.json'
+
+        with open(filename, 'r') as globalfile:
+            self.global_configuration:dict[any, dict] = json.load(globalfile)
+
+        for key, value in self.global_configuration.items():            
+            for key_exception, value_ip_exceptions in value.items():                            
+                if type(value_ip_exceptions) == list and key_exception == 'ip_exceptions':
+                    for global_ip_exception in value_ip_exceptions:
+                        self.global_ip_exceptions.append(global_ip_exception)
 
         return None
 
