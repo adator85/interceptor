@@ -13,7 +13,7 @@ class Cron:
     def init(self) -> None:
         # Initialiser heartbeat
         self.Base.create_thread(self.Base.heartbeat, (self.Base.PULSE, ))
-        self.Base.create_thread(self.cron, (self.Base.clean_db_logs, 24 * 60 * 60))
+        self.Base.create_thread(self.cron, (self.Base.clean_db_logs, 60 * 60))
 
         return None
 

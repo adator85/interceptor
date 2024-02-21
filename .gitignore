@@ -1,3 +1,5 @@
 .intvenv*
 __pycache__*
 db*
+logs*
+modules/sshd.json

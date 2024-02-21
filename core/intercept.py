@@ -115,7 +115,7 @@ class Intercept:
                     db_ip, db_attempt = results_ip
                     if db_attempt >= sys_attempt:
                         self.Base.ip_tables_add(process, db_ip, sys_ban_duration)
-                        self.Base.log_print(f'{db_ip} - duration: {str(sys_ban_duration)} seconds', 'red')
+                        self.Base.log_print(f'{process} - "{db_ip}" - Moving to jail for {str(sys_ban_duration)} seconds', 'red')
                     
                     self.Base.clean_iptables()
 
