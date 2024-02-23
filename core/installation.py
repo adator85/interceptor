@@ -35,8 +35,6 @@ class Install:
             print(f"### Your python version must be greather than or equal to {self.PYTHON_MIN_VERSION} ###")
             return False
 
-        print(f"===> Version of python : {python_version()} ==> OK")
-
         return True
     
     def checkDependencies(self) -> None:

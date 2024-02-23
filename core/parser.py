@@ -1,32 +1,35 @@
 import json, os
 from core import base
+from core.cron import Cron
 
 class Parser:
 
     def __init__(self, base:base.Base) -> None:
 
-        self.Base = base
-        self.all_modules:dict = {}
-        self.global_configuration:dict[any, dict] = {}
-        self.global_ip_exceptions:list = []
+        self.Base = base                                # The Instance of the Base object
+        self.modules:dict[any, dict] = {}               # Charger l'ensemble des modules
+        self.global_configuration:dict[any, dict] = {}  # Global configuration
+        self.global_ip_exceptions:list = []             # Global ip exceptions
 
-        self.process:list = []              # List of processes ()
-        self.filenames:list = []            # Liste contenant le nom des fichiers
+        self.module_names:list = []                     # List of module names () ==> ["sshd","dovecot","proftpd"]
+        self.filenames:list = []                        # Liste contenant le nom des fichiers de configuration json
+        self.errors:list = []                           # check errors
         
         self.load_global_json_configuration()
         self.load_json_configuration()
         self.parse_json()
 
-        return None
+        self.intercept_initialization()
+        Cron(self.Base).init()                          # Lancer le cron
 
-    def load_all_modules(self, json_data:dict) -> None:
-
-        self.all_modules[json_data['process']] = json_data
+        if self.errors:
+            for error in self.errors:
+                self.Base.log_print(error,'red')
 
         return None
 
     def load_global_json_configuration(self) -> None:
-        """Load global configuration file        
+        """Load global configuration file
         """
         
         filename = f'core{os.sep}global.json'
@@ -34,8 +37,8 @@ class Parser:
         with open(filename, 'r') as globalfile:
             self.global_configuration:dict[any, dict] = json.load(globalfile)
 
-        for key, value in self.global_configuration.items():            
-            for key_exception, value_ip_exceptions in value.items():                            
+        for key, value in self.global_configuration.items():
+            for key_exception, value_ip_exceptions in value.items():
                 if type(value_ip_exceptions) == list and key_exception == 'ip_exceptions':
                     for global_ip_exception in value_ip_exceptions:
                         self.global_ip_exceptions.append(global_ip_exception)
@@ -58,36 +61,62 @@ class Parser:
                 self.filenames.append(file)                     # Enregistrer le nom des fichiers
                 with open(f'{path}{file}', 'r') as f:
                     json_data = json.load(f)
-                    # print(f'== File "{file}" has been loaded')
-                    self.load_all_modules(json_data)
+                    if self.check_json_structure(json_data, file):
+                        self.load_modules(json_data)
+                        no_files += 1
+                    else:
+                        self.filenames.remove(file)
 
-                no_files += 1
 
         return no_files
 
-    def parse_json(self) -> None:
+    def load_modules(self, json_data:dict) -> None:
 
-        # Charger le nombre de process existants
-        for key, values in self.all_modules.items():
-            self.process.append(key)
+        try:
+            self.modules[json_data['module_name']] = json_data
+
+            return None
+        except KeyError as ke:
+            self.Base.log_print(f'"{self.load_modules.__name__}" Key Error detected - {ke}','red')
+
+    def parse_json(self) -> None:
+        
+        # Charger le nom des modules existants
+        for module_name in self.modules:
+            self.module_names.append(module_name)
         
         return None
-        ## get process
-        for key, values  in self.json_conf.items():
-            
-            # Inserer les informations de base
-            if type(values) == str:
-                match key:
-                    case 'process':
-                        self.process.append(self.json_conf[key])
-                    case 'rgx_process_name':
-                        self.rgx_process_name.append(self.json_conf[key])
-                    case 'rgx_process_id':
-                        self.rgx_process_id.append(self.json_conf[key])
 
-            # Insérer les filtres
-            if type(values) == dict:
-                for k, v in values.items():
-                    self.filters.append(v)
+    def check_json_structure(self, json_data:dict, filename:str) -> bool:
+        
+        response = True
+        mandatory_keys = ['module_name','rgx_service_name','rgx_service_id','filters','actions']
+
+        for mandator_key in mandatory_keys:
+            if not mandator_key in json_data:
+                self.errors.append(f'Key : {mandator_key} missing in {filename}')
+                response = False
+
+
+        return response
+
+    def intercept_initialization(self) -> None:
+
+        message = '#            Starting Interceptor Security    '
+        hn  = f'#    Hostname               : {self.Base.HOSTNAME}\n'
+        hn += f'#    IPV4                   : {self.Base.IPV4}\n'
+        hn += f'#    Interceptor Version    : {self.Base.VERSION}\n'
+        hn += f'#    Python Version         : {self.Base.CURRENT_PYTHON_VERSION}\n'
+        hn += f'#    Modules loaded         :\n'
+        
+        for file in self.filenames:
+            hn += f'#                            - {file}\n'
+        
+        taille = len(message) + 5
+
+        print('#' * taille)
+        print(message)
+        print(hn)
+        print('#' * taille)
 
         return None

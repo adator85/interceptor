@@ -1,30 +1,35 @@
-from subprocess import run, PIPE
+from subprocess import run, PIPE, Popen
 import os, threading, time, socket
 from datetime import datetime, timedelta
 from sqlalchemy import create_engine, Engine, Connection, CursorResult
 from sqlalchemy.sql import text
+from platform import python_version
 
 class Base:
 
     __COLORS = {'white': '\033[97m', 
                 'green': '\033[92m', 
-                'red': '\033[91m', 
+                'red': '\033[91m',
+                'yellow': '\033[93m',
                 'reset':'\033[0m'
                 }
 
     def __init__(self) -> None:
 
-        self.VERSION  = '1.3.0'                                 # MAJOR.MINOR.BATCH
-        self.HOSTNAME = socket.gethostname()                    # Hostname of the local machine
-        self.IPV4     = socket.gethostbyname(self.HOSTNAME)     # Local ipv4 of the local machine
-        self.PULSE    = 5                                       # Pulse in seconds 
+        self.VERSION                = '1.4.0'                                   # MAJOR.MINOR.BATCH
+        self.CURRENT_PYTHON_VERSION = python_version()                          # Current python version
+        self.HOSTNAME               = socket.gethostname()                      # Hostname of the local machine
+        self.IPV4                   = socket.gethostbyname(self.HOSTNAME)       # Local ipv4 of the local machine
+        self.PULSE                  = 5                                         # Pulse in seconds
+        self.DEBUG                  = False                                     # Debug variable pour afficher les outputs
 
-        self.lock = threading.RLock()                           # Define RLock for multithreading
-        self.hb_active:bool = True                              # Define heartbeat variable
-        self.running_threads:list[threading.Thread] = []        # Define running_threads variable
-        self.logs_init()                                        # Init logs directory and log file.
-        self.engine, self.cursor = self.db_init()               # Init Engine & Cursor
-        self.__db_create_tables()                               # Create tables        
+        self.lock = threading.RLock()                                           # Define RLock for multithreading
+        self.hb_active:bool = True                                              # Define heartbeat variable
+        self.running_threads:list[threading.Thread] = []                        # Define running_threads variable
+
+        self.logs_init()                                                        # Init logs directory and log file.
+        self.engine, self.cursor = self.db_init()                               # Init Engine & Cursor
+        self.__db_create_tables()                                               # Create tables        
 
         return None
 
@@ -100,8 +105,8 @@ class Base:
         table_logs = f'''CREATE TABLE IF NOT EXISTS logs (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             datetime TEXT,
-            process_id TEXT,
-            process TEXT,
+            service_id TEXT,
+            module_name TEXT,
             ip TEXT,
             keyword TEXT,
             user TEXT
@@ -111,7 +116,7 @@ class Base:
         table_iptables = f'''CREATE TABLE IF NOT EXISTS iptables (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             datetime TEXT,
-            process TEXT,
+            module_name TEXT,
             ip TEXT,
             duration INTEGER
             )
@@ -120,7 +125,7 @@ class Base:
         table_iptables_logs = f'''CREATE TABLE IF NOT EXISTS iptables_logs (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             datetime TEXT,
-            process TEXT,
+            module_name TEXT,
             ip TEXT,
             duration INTEGER
             )
@@ -132,46 +137,47 @@ class Base:
 
         return None
 
-    def db_record_ip(self, process_id:str, process:str, ip:str, keyword:str, user:str) -> None:
+    def db_record_ip(self, service_id:str, module_name:str, ip:str, keyword:str, user:str) -> int:
 
-        query = '''INSERT INTO logs (datetime, process_id, process, ip, keyword, user) 
-                VALUES (:datetime,:process_id, :process, :ip, :keyword, :user)
+        query = '''INSERT INTO logs (datetime, service_id, module_name, ip, keyword, user) 
+                VALUES (:datetime,:service_id, :module_name, :ip, :keyword, :user)
                 '''
         mes_donnees = {
                         'datetime': self.get_sdatetime(),
-                        'process_id': process_id,
-                        'process':process,
+                        'service_id': service_id,
+                        'module_name':module_name,
                         'ip': ip,
                         'keyword':keyword,
                         'user':user
                         }
 
-        self.db_execute_query(query, mes_donnees)
-        return None
+        r = self.db_execute_query(query, mes_donnees)
 
-    def db_record_iptables(self, process:str, ip:str, duration:int) -> None:
+        return r.rowcount
 
-        query = '''INSERT INTO iptables (datetime, process, ip, duration) 
-                VALUES (:datetime, :process, :ip, :duration)
+    def db_record_iptables(self, module_name:str, ip:str, duration:int) -> int:
+
+        query = '''INSERT INTO iptables (datetime, module_name, ip, duration) 
+                VALUES (:datetime, :module_name, :ip, :duration)
                 '''
         mes_donnees = {
                         'datetime': self.get_sdatetime(),
-                        'process':process,
+                        'module_name':module_name,
                         'ip': ip,
                         'duration':duration
                         }
 
-        self.db_execute_query(query, mes_donnees)
-        return None
+        r = self.db_execute_query(query, mes_donnees)
+        return r.rowcount
     
-    def db_record_iptables_logs(self, process:str, ip:str, duration:int) -> None:
+    def db_record_iptables_logs(self, module_name:str, ip:str, duration:int) -> None:
 
-        query = '''INSERT INTO iptables_logs (datetime, process, ip, duration) 
-                VALUES (:datetime, :process, :ip, :duration)
+        query = '''INSERT INTO iptables_logs (datetime, module_name, ip, duration) 
+                VALUES (:datetime, :module_name, :ip, :duration)
                 '''
         mes_donnees = {
                         'datetime': self.get_sdatetime(),
-                        'process':process,
+                        'module_name':module_name,
                         'ip': ip,
                         'duration':duration
                         }
@@ -202,7 +208,7 @@ class Base:
         
         return None
 
-    def log_print(self, string:str, color:str) -> None:
+    def log_print(self, string:str, color:str = None) -> None:
         """Print logs in the terminal and record it in a file
 
         Args:
@@ -210,16 +216,19 @@ class Base:
             color (str): the color to be used in the terminal
         """
         reset = self.__COLORS['reset']
-        find_color = False
+        isExist_color = False
+
+        if color is None:
+            print(f'{self.get_sdatetime()}: {string}')
         
         for key_color, value_color in self.__COLORS.items():
             if key_color == color:
                 print(f'{value_color}{self.get_sdatetime()}: {string}{reset}')
-                find_color = True
+                isExist_color = True
         
-        if not find_color:
+        if not isExist_color:
             print(f'{self.get_sdatetime()}: {string}')
-        
+
         logs_directory = f'logs{os.sep}'
         logs_full_path = f'{logs_directory}intercept.log'
         
@@ -273,7 +282,7 @@ class Base:
         # Ajouter la duration
         # si la date + duration > date actuel supprimer l'enregistrement
 
-        query = f'''SELECT ip, datetime, duration, process 
+        query = f'''SELECT ip, datetime, duration, module_name 
                     FROM iptables
                 '''
         
@@ -281,14 +290,14 @@ class Base:
         r = cursorResult.fetchall()
 
         for result in r:
-            db_ip, db_datetime, db_duration, db_process = result
+            db_ip, db_datetime, db_duration, db_module_name = result
             datetime_object = self.convert_to_datetime(db_datetime)
             dtime_final = self.add_secondes_to_date(datetime_object, db_duration)
 
             if self.get_datetime() > dtime_final:
                 self.db_remove_iptables(db_ip)
                 self.ip_tables_remove(db_ip)
-                self.log_print(f'{db_process} - "{db_ip}" - released from jail', 'green')
+                self.log_print(f'{db_module_name} - "{db_ip}" - released from jail', 'green')
 
     def clean_db_logs(self) -> None:
         """Clean logs that they have more than 24 hours
@@ -303,16 +312,16 @@ class Base:
 
         return None
 
-    def ip_tables_add(self, process:str, ip:str, duration_seconds:int) -> None:
+    def ip_tables_add(self, module_name:str, ip:str, duration_seconds:int) -> int:
 
         if self.ip_tables_isExist(ip):
-            return None
+            return 0
         
         system_command = '/sbin/iptables -A INPUT -s {} -j REJECT'.format(ip)
         os.system(system_command)
-        self.db_record_iptables(process, ip, duration_seconds)
-        self.db_record_iptables_logs(process, ip, duration_seconds)
-        return None
+        rowcount = self.db_record_iptables(module_name, ip, duration_seconds)
+        self.db_record_iptables_logs(module_name, ip, duration_seconds)
+        return rowcount
 
     def ip_tables_remove(self, ip:str) -> None:
 

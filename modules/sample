@@ -1,0 +1,23 @@
+{
+    "module_name"           : "Your module name",           // Could be different from the service name if you want (*)
+    "logs_source"           : "/path/to/yourfile.log",      // The full path to your log file
+    "rgx_service_name"      : "regex for service name",     // Regex to identify your service name in the log (*)
+    "rgx_service_id"        : "regex for service id",       // Regex to identify your service id (*)
+    "rgx_username"          : "regex to log the username",  // Regex to identify the username to be logged in the database
+    
+    "filters": {                                            // bloc filters (*)
+        "first_filter"      : "Regex 1",                    // Your first regex to trigger a jail action
+        "second_filter"     : "Regex 2"                     // Your second regex ...
+    },
+    
+    "filters_ip": {                                         // Bloc filters_ip
+        "rip": "regex to identify the ipv4 address"         // Regex to identify the ip address
+    },
+    
+    "ip_exceptions": ["192.168.1.11","192.168.1.10"],       // Ip excluded from the analysis
+    
+    "actions": {                                            // Bloc actions (*)
+        "attempt"           : 4,                            // How many attempt before the jail (*)
+        "jail_duration"     : 30                            // The jail duration - expressed in seconds (*)
+    }
+}
