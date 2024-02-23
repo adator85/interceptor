@@ -27,10 +27,16 @@ GitHub Repository: https://github.com/adator85/Interceptor
 
 Requirements:
 
-Python 3.10
-    SQLAlchemy
-Journalctl (for log file parsing)
-iptables (for banning and releasing IP addresses)
+    - Python 3.10 or higher with SQLAlchemy installed ( pip3 install sqlalchemy )
+    - Journalctl (for log file parsing)
+    - iptables (for banning and releasing IP addresses)
+
+Installation:
+
+    - python3 -m venv .intenv
+    - source ./intenv/bin/activate
+    - python main.py
+    once the installation and the application is running, i would recommand to create a service and run the application as root.
 
 Contributions:
 Contributions, bug reports, and feature requests are welcome. Please feel free to fork the repository, make improvements, and submit pull requests.
