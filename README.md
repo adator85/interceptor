@@ -51,7 +51,7 @@ Contact:
     Author : adator
     contact : debian@deb.biz.st
     IRC Discussion : 
-        Connexion server : irc://irc.deb.biz.st
+        Connexion server : irc.deb.biz.st
         Port             : 6697 ( for ssl )
                          : 6667
         Channel          : #Interceptor

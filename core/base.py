@@ -1,5 +1,5 @@
 from subprocess import run, PIPE, Popen
-import os, threading, time, socket
+import os, threading, time, socket, json, requests
 from datetime import datetime, timedelta
 from sqlalchemy import create_engine, Engine, Connection, CursorResult
 from sqlalchemy.sql import text
@@ -16,12 +16,18 @@ class Base:
 
     def __init__(self) -> None:
 
-        self.VERSION                = '1.4.0'                                   # MAJOR.MINOR.BATCH
+        self.VERSION                = '1.5.2'                                   # MAJOR.MINOR.BATCH
         self.CURRENT_PYTHON_VERSION = python_version()                          # Current python version
         self.HOSTNAME               = socket.gethostname()                      # Hostname of the local machine
         self.IPV4                   = socket.gethostbyname(self.HOSTNAME)       # Local ipv4 of the local machine
         self.PULSE                  = 5                                         # Pulse in seconds
         self.DEBUG                  = False                                     # Debug variable pour afficher les outputs
+        self.default_attempt        = 4                                         # Default attempt before jail
+        self.default_jail_duration  = 120                                       # Default Duration in seconds before the release
+        self.abuseipdb_jail_score:int = 100                                     # Default score for the jail if not set in the configuration
+        self.abuseipdb_jail_duration:int = 600                                  # Default duration for abusedbip if not set
+        self.default_ipv4           = '0.0.0.0'                                 # Default ipv4 to be used by Interceptor
+
 
         self.lock = threading.RLock()                                           # Define RLock for multithreading
         self.hb_active:bool = True                                              # Define heartbeat variable
@@ -32,6 +38,14 @@ class Base:
         self.__db_create_tables()                                               # Create tables        
 
         return None
+
+    def get_unixtime(self)->int:
+        """
+        Cette fonction retourne un UNIXTIME de type 12365456
+        Return: Current time in seconds since the Epoch (int)
+        """
+        unixtime = int( time.time() )
+        return unixtime
 
     def get_datetime(self) -> datetime:
 
@@ -131,9 +145,21 @@ class Base:
             )
         '''
 
+        table_abuseipdb = f'''CREATE TABLE IF NOT EXISTS abuseipdb (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            datetime TEXT,
+            country_code TEXT,
+            ip TEXT,
+            isTor TEXT,
+            totalReports INTEGER,
+            score INTEGER
+            )
+        '''
+
         self.db_execute_query(table_logs)
         self.db_execute_query(table_iptables)
         self.db_execute_query(table_iptables_logs)
+        self.db_execute_query(table_abuseipdb)
 
         return None
 
@@ -302,13 +328,26 @@ class Base:
     def clean_db_logs(self) -> None:
         """Clean logs that they have more than 24 hours
         """
+        
+        query = "DELETE FROM logs WHERE ip = :ip"
+        mes_donnees = {'ip': self.default_ipv4}
+        default_ip_request = self.db_execute_query(query,mes_donnees)
+        
         query = '''DELETE FROM logs WHERE datetime <= :datetime'''
         mes_donnees = {'datetime':self.minus_one_hour(24)}
-        r = self.db_execute_query(query, mes_donnees)
+        r_datetime = self.db_execute_query(query, mes_donnees)
 
-        affected_rows = r.rowcount
-        if affected_rows > 0:
-            self.log_print(f'clean_db_logs - Row Affected {str(affected_rows)}','green')
+        query = f'''DELETE FROM abuseipdb WHERE score < :score and datetime <= :datetime'''
+        mes_donnees = {'datetime':self.minus_one_hour(24), 'score': self.abuseipdb_jail_score}
+        r_abuseipdb = self.db_execute_query(query, mes_donnees)
+
+        affected_rows = r_datetime.rowcount
+        affected_rows_abuseipdb = r_abuseipdb.rowcount
+        affected_rows_default_ipv4 = default_ip_request.rowcount
+        affected = affected_rows + affected_rows_abuseipdb + affected_rows_default_ipv4
+
+        if affected > 0:
+            self.log_print(f'clean_db_logs - Deleted : Logs {str(affected_rows)} - AbuseIPDB {str(affected_rows_abuseipdb)} - Default ip {affected_rows_default_ipv4}','green')
 
         return None
 
@@ -351,5 +390,96 @@ class Base:
 
         if check_rule:
             response = True
+
+        return response
+    
+    def check_endpoint_abuseipdb(self, parsed_api:dict, ip_to_check:str) -> dict | None:
+
+        api_name = 'abuseipdb'
+
+        if not api_name in parsed_api:
+            return None
+        elif ip_to_check == '0.0.0.0':
+            return None
+        
+        api_status = parsed_api[api_name]['active']
+        if not api_status:
+            return None
+
+        endpoint = parsed_api[api_name]['endpoint']
+        api_key = parsed_api[api_name]['api_key']
+
+        if api_key == '':
+            self.log_print(f'AbuseIPDB - API Key Error : api_key empty {api_key}','red')
+            return None
+
+        # Defining the api-endpoint
+        url = endpoint
+
+        querystring = {
+            'ipAddress': ip_to_check,
+            'maxAgeInDays': '90'
+        }
+
+        headers = {
+            'Accept': 'application/json',
+            'Key': api_key
+        }
+        try:
+            response = requests.request(method='GET', url=url, headers=headers, params=querystring, timeout=5)
+
+            # Formatted output
+            req = json.loads(response.text)
+            # req = json.dumps(decodedResponse, sort_keys=True, indent=4)
+            if 'errors' in req:
+                self.log_print(f'API Error : {req["errors"][0]["detail"]}','red')
+                return None
+
+            ip = req['data']['ipAddress']
+            country = req['data']['countryCode']
+            isTor = req['data']['isTor']
+            totalReports = req['data']['totalReports']
+            score = req['data']['abuseConfidenceScore']
+
+            mes_donnees = {'datetime': self.get_sdatetime(), 'country_code': country,'ip': ip,'isTor':isTor,'totalReports': totalReports,'score': score}
+            r = self.db_execute_query('INSERT INTO abuseipdb (datetime, country_code, ip, isTor, totalReports, score) VALUES (:datetime,:country_code, :ip, :isTor, :totalReports, :score)', mes_donnees)
+            if r.rowcount > 0:
+                self.log_print(f'AbuseIPDB - new ip recorded : IP: "{ip}" - Score: {score}','green')
+            resp:dict = dict(req)
+            return resp
+
+        except KeyError as ke:
+            self.log_print(f'API Error KeyError : {ke}','red')
+        except requests.ReadTimeout as timeout:
+            self.log_print(f'API Error Timeout : {timeout}','red')
+        except requests.ConnectionError as ConnexionError:
+            self.log_print(f'API Connection Error : {ConnexionError}','red')        
+
+    def get_local_abuseipdb_score(self, ip_address:str) -> tuple[int, int, int]:
+        """Return local information stored in the database
+        abuseipdb table already contain some fetched ip
+
+        Args:
+            ip_address (str): Ip to analyse
+
+        Returns:
+            tuple[int, int, int]: isTor, totalReports, score
+        """
+        response:tuple = ()
+        query = 'SELECT isTor, totalReports, score FROM abuseipdb WHERE ip = :ip'
+        mes_donnees = {'ip': ip_address}
+
+        res_sql = self.db_execute_query(query, mes_donnees)
+
+        fetch_result = res_sql.fetchone()        
+        
+        if not fetch_result is None:
+            isTor = int(fetch_result.isTor)
+            totalReports = int(fetch_result.totalReports)
+            score = int(fetch_result.score)
+            
+            response = (isTor, totalReports, score)
+
+        
 
         return response

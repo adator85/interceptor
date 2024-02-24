@@ -1,0 +1,12 @@
+[Unit]
+Description=Interceptor Service
+
+[Service]
+User=root
+ExecStart=/Path/to/your/python/venv/.intvenv/bin/python /path/to/your/Interceptor/main.py
+WorkingDirectory=/Path/To/Your/InterceptorFolder
+SyslogIdentifier=Interceptor
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target

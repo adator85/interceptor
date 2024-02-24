@@ -3,6 +3,7 @@
     "logs_source"           : "/path/to/yourfile.log",      // The full path to your log file
     "rgx_service_name"      : "regex for service name",     // Regex to identify your service name in the log (*)
     "rgx_service_id"        : "regex for service id",       // Regex to identify your service id (*)
+    "inc_service_id"        : true,                         // Increment service id if you want
     "rgx_username"          : "regex to log the username",  // Regex to identify the username to be logged in the database
     
     "filters": {                                            // bloc filters (*)

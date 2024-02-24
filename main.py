@@ -4,6 +4,7 @@ Install()   # Run installation if needed
 
 from core.base import Base
 from core.parser import Parser
+from core.cron import Cron
 from core.interceptprocess import InterceptProcess
 import time
 
@@ -11,6 +12,8 @@ import time
 
 BaseInstance = Base()
 ParserInstance = Parser(BaseInstance)
+CronInstance = Cron(BaseInstance, ParserInstance)
+CronInstance.init()
 IProcInstance = InterceptProcess(ParserInstance, BaseInstance)
 
 

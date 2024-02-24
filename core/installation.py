@@ -8,7 +8,8 @@ class Install:
     def __init__(self) -> None:
 
         self.PYTHON_MIN_VERSION = '3.10'
-        self.module_to_install = ['sqlalchemy']
+        self.module_to_install = ['sqlalchemy','requests']
+        self.updating_pip = False
 
         if not self.checkPythonVersion():
             # Tester si c'est la bonne version de python
@@ -52,20 +53,21 @@ class Install:
         if not do_install:
             return None
 
-        print("===> Vider le cache de pip")
-        check_call(['pip','cache','purge'])
-        
-        print("===> Verifier si pip est a jour")
-        check_call(['python', '-m', 'pip', 'install', '--upgrade', 'pip'])
+        if self.updating_pip:
+            print("===> Removing pip cache")
+            check_call(['pip','cache','purge'])
+            
+            print("===> Check if pip is up to date")
+            check_call(['python', '-m', 'pip', 'install', '--upgrade', 'pip'])
 
         if find_spec('greenlet') is None:
             check_call(['pip','install', '--only-binary', ':all:', 'greenlet'])
-            print('====> Module Greenlet installé')
+            print('====> Module Greenlet installed')
 
         for module in self.module_to_install:
             if find_spec(module) is None:
                 print("### Trying to install missing python packages ###")
                 check_call(['pip','install', module])
-                print(f"====> Module {module} installé")
+                print(f"====> Module {module} installed")
             else:
                 print(f"==> {module} already installed")

@@ -1,6 +1,5 @@
 import json, os
 from core import base
-from core.cron import Cron
 
 class Parser:
 
@@ -11,6 +10,8 @@ class Parser:
         self.global_configuration:dict[any, dict] = {}  # Global configuration
         self.global_ip_exceptions:list = []             # Global ip exceptions
 
+        self.global_api:dict[any, dict] = {}            # Global API for ip checks
+        
         self.module_names:list = []                     # List of module names () ==> ["sshd","dovecot","proftpd"]
         self.filenames:list = []                        # Liste contenant le nom des fichiers de configuration json
         self.errors:list = []                           # check errors
@@ -20,7 +21,7 @@ class Parser:
         self.parse_json()
 
         self.intercept_initialization()
-        Cron(self.Base).init()                          # Lancer le cron
+        #Cron(self.Base, 'Parser').init()                          # Lancer le cron
 
         if self.errors:
             for error in self.errors:
@@ -38,10 +39,18 @@ class Parser:
             self.global_configuration:dict[any, dict] = json.load(globalfile)
 
         for key, value in self.global_configuration.items():
+
             for key_exception, value_ip_exceptions in value.items():
                 if type(value_ip_exceptions) == list and key_exception == 'ip_exceptions':
                     for global_ip_exception in value_ip_exceptions:
                         self.global_ip_exceptions.append(global_ip_exception)
+                if type(value_ip_exceptions) == dict and key_exception == 'abuseipdb':
+                    self.global_api[key_exception] = value_ip_exceptions
+                    
+                    if 'jail_score' in self.global_api[key_exception]:
+                        self.Base.abuseipdb_jail_score = self.global_api[key_exception]['jail_score']
+                    if 'jail_duration' in self.global_api[key_exception]:
+                        self.Base.abuseipdb_jail_duration = self.global_api[key_exception]['jail_duration']
 
         return None
 
