@@ -1,4 +1,4 @@
-# Interceptor Security system
+# Interceptor Intrusion Detector system
 Description:
 
     Interceptor is a Python application designed to scan log files from the Journalctl and identify potential attacks.
@@ -27,7 +27,9 @@ GitHub Repository: https://github.com/adator85/Interceptor
 
 Requirements:
 
-    - Python 3.10 or higher with SQLAlchemy installed ( pip3 install sqlalchemy )
+    - Python 3.10 or higher with SQLAlchemy and requests installed 
+            - pip3 install sqlalchemy
+            - pip3 install requests
     - Journalctl (for log file parsing)
     - iptables (for banning and releasing IP addresses)
 

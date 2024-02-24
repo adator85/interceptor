@@ -16,7 +16,7 @@ class Base:
 
     def __init__(self) -> None:
 
-        self.VERSION                = '1.5.2'                                   # MAJOR.MINOR.BATCH
+        self.VERSION                = '1.6.2'                                   # MAJOR.MINOR.BATCH
         self.CURRENT_PYTHON_VERSION = python_version()                          # Current python version
         self.HOSTNAME               = socket.gethostname()                      # Hostname of the local machine
         self.IPV4                   = socket.gethostbyname(self.HOSTNAME)       # Local ipv4 of the local machine
@@ -24,9 +24,12 @@ class Base:
         self.DEBUG                  = False                                     # Debug variable pour afficher les outputs
         self.default_attempt        = 4                                         # Default attempt before jail
         self.default_jail_duration  = 120                                       # Default Duration in seconds before the release
-        self.abuseipdb_jail_score:int = 100                                     # Default score for the jail if not set in the configuration
-        self.abuseipdb_jail_duration:int = 600                                  # Default duration for abusedbip if not set
         self.default_ipv4           = '0.0.0.0'                                 # Default ipv4 to be used by Interceptor
+
+        self.abuseipdb_config:dict          = {}                                # AbuseIPDB Configuration
+        self.abuseipdb_status:bool          = False                             # Default abuseipdb status
+        self.abuseipdb_jail_score:int       = 100                               # Default score for the jail if not set in the configuration
+        self.abuseipdb_jail_duration:int    = 600                               # Default duration for abusedbip if not set
 
 
         self.lock = threading.RLock()                                           # Define RLock for multithreading
@@ -156,10 +159,21 @@ class Base:
             )
         '''
 
+        table_reported_abuseipdb = f'''CREATE TABLE IF NOT EXISTS reported_abuseipdb (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            datetime TEXT,
+            reported_datetime TEXT,
+            ip TEXT,
+            category TEXT,
+            comment TEXT
+            )
+        '''
+
         self.db_execute_query(table_logs)
         self.db_execute_query(table_iptables)
         self.db_execute_query(table_iptables_logs)
         self.db_execute_query(table_abuseipdb)
+        self.db_execute_query(table_reported_abuseipdb)
 
         return None
 
@@ -399,22 +413,20 @@ class Base:
 
         if not api_name in parsed_api:
             return None
-        elif ip_to_check == '0.0.0.0':
+        elif not self.abuseipdb_status:
             return None
-        
-        api_status = parsed_api[api_name]['active']
-        if not api_status:
+        elif ip_to_check == self.default_ipv4:
             return None
 
-        endpoint = parsed_api[api_name]['endpoint']
+        api_url = parsed_api[api_name]['url']
         api_key = parsed_api[api_name]['api_key']
 
-        if api_key == '':
-            self.log_print(f'AbuseIPDB - API Key Error : api_key empty {api_key}','red')
+        if api_key == '' or api_url == '':
+            self.log_print('AbuseIPDB - API Key or API ENDPOINT Error : empty','red')
             return None
 
         # Defining the api-endpoint
-        url = endpoint
+        url = f'{api_url}check'
 
         querystring = {
             'ipAddress': ip_to_check,
@@ -453,7 +465,7 @@ class Base:
         except requests.ReadTimeout as timeout:
             self.log_print(f'API Error Timeout : {timeout}','red')
         except requests.ConnectionError as ConnexionError:
-            self.log_print(f'API Connection Error : {ConnexionError}','red')        
+            self.log_print(f'API Connection Error : {ConnexionError}','red')
 
     def get_local_abuseipdb_score(self, ip_address:str) -> tuple[int, int, int]:
         """Return local information stored in the database
@@ -478,8 +490,95 @@ class Base:
             totalReports = int(fetch_result.totalReports)
             score = int(fetch_result.score)
             
-            response = (isTor, totalReports, score)
-
-        
+            response = (isTor, totalReports, score)       
 
         return response
+
+    def report_to_abuseipdb(self, ip_address:str, attack_datetime:str, category:list, comment:str) -> None:
+        """_summary_
+
+        Args:
+            ip_address (str): _description_
+            attack_datetime (str): _description_
+            category (list): _description_
+            comment (str): _description_
+
+        Returns:
+            _type_: _description_
+        """
+        try:
+
+            api_name        = 'abuseipdb'
+
+            if not api_name in self.abuseipdb_config:
+                return None
+            elif not self.abuseipdb_status:
+                return None
+            elif ip_address == self.default_ipv4:
+                return None
+            
+            api_url    = self.abuseipdb_config[api_name]['url']
+            api_key         = self.abuseipdb_config[api_name]['api_key']
+            
+            if api_url == '' or api_key == '':
+                self.log_print('AbuseIPDB - API Key or API ENDPOINT Error : empty','red')
+                return None
+            
+            # Create category section
+            category_ = ''
+            count = 0
+            for cat in category:
+                count += 1
+                category_ += f'{cat}'
+                if count < len(category):
+                    category_ += ','
+
+            # Defining the api-endpoint
+            url = f'{api_url}report'
+
+            converted_attack_datetime = datetime.strptime(attack_datetime, "%d-%m-%Y %H:%M:%S")
+            current_timezone = converted_attack_datetime.astimezone().tzinfo
+            converted_attack_datetime = converted_attack_datetime.replace(tzinfo=current_timezone)
+            timestamp_attack_datetime = converted_attack_datetime.isoformat()
+
+            # String holding parameters to pass in json format
+            params = {
+                'ip':ip_address,
+                'categories':category_,
+                'comment':comment,
+                'timestamp':timestamp_attack_datetime
+            }
+
+            headers = {
+                'Accept': 'application/json',
+                'Key': api_key
+            }
+
+            with requests.request(method='POST', url=url, headers=headers, params=params, timeout=2) as response:
+
+                req = json.loads(response.text)
+                if 'errors' in req:
+                    self.log_print(f'API Error : {req["errors"]}','red')
+                    return None
+
+                abuseipdb_ipAddress = req['data']['ipAddress']
+                abuseipdb_score     = req['data']['abuseConfidenceScore']
+
+                query_reported_abuseipdb = '''INSERT INTO reported_abuseipdb (datetime, reported_datetime, ip, category, comment) 
+                                            VALUES 
+                                            (:datetime, :reported_datetime, :ip, :category, :comment)
+                                            '''
+                mes_donnees = {'datetime': self.get_sdatetime(), 'reported_datetime': attack_datetime,'ip': ip_address, 'category':category_,'comment': comment}
+                r = self.db_execute_query(query_reported_abuseipdb, mes_donnees)
+                if r.rowcount > 0:
+                    self.log_print(f'AbuseIPDB - REPORT SENT - IP: {abuseipdb_ipAddress} | Updated score : {str(abuseipdb_score)}','green')
+
+            return None
+
+        except KeyError as ke:
+            self.log_print(f'API Error KeyError : {ke}','red')
+        except requests.ReadTimeout as timeout:
+            self.log_print(f'API Error Timeout : {timeout}','red')
+        except requests.ConnectionError as ConnexionError:
+            self.log_print(f'API Connection Error : {ConnexionError}','red')
+        

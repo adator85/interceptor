@@ -21,7 +21,6 @@ class Parser:
         self.parse_json()
 
         self.intercept_initialization()
-        #Cron(self.Base, 'Parser').init()                          # Lancer le cron
 
         if self.errors:
             for error in self.errors:
@@ -44,13 +43,18 @@ class Parser:
                 if type(value_ip_exceptions) == list and key_exception == 'ip_exceptions':
                     for global_ip_exception in value_ip_exceptions:
                         self.global_ip_exceptions.append(global_ip_exception)
+                
                 if type(value_ip_exceptions) == dict and key_exception == 'abuseipdb':
                     self.global_api[key_exception] = value_ip_exceptions
                     
+                    # Send information to Base Instance
+                    self.Base.abuseipdb_config[key_exception] = value_ip_exceptions
+                    if 'active' in self.global_api[key_exception]:
+                        self.Base.abuseipdb_status = bool(self.global_api[key_exception]['active'])
                     if 'jail_score' in self.global_api[key_exception]:
-                        self.Base.abuseipdb_jail_score = self.global_api[key_exception]['jail_score']
+                        self.Base.abuseipdb_jail_score = int(self.global_api[key_exception]['jail_score'])
                     if 'jail_duration' in self.global_api[key_exception]:
-                        self.Base.abuseipdb_jail_duration = self.global_api[key_exception]['jail_duration']
+                        self.Base.abuseipdb_jail_duration = int(self.global_api[key_exception]['jail_duration'])
 
         return None
 

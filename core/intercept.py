@@ -75,7 +75,7 @@ class Intercept:
                                 if self.Base.db_record_ip(service_id, mod_name, ip, filter_name, user) > 0:
                                     self.Base.log_print(f'{mod_name} - {filter_name} - {service_id} - {ip} - {user} - recorded', 'white')
                                     
-                                    local_abuseipdb_information = self.Base.get_local_abuseipdb_score(ip) 
+                                    local_abuseipdb_information = self.Base.get_local_abuseipdb_score(ip)
                                     if local_abuseipdb_information:
                                         isTor, totalReports, score = self.Base.get_local_abuseipdb_score(ip)
                                         if score >= self.Base.abuseipdb_jail_score:
