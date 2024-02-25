@@ -16,7 +16,7 @@ class Base:
 
     def __init__(self) -> None:
 
-        self.VERSION                = '1.6.2'                                   # MAJOR.MINOR.BATCH
+        self.VERSION                = '1.6.3'                                   # MAJOR.MINOR.BATCH
         self.CURRENT_PYTHON_VERSION = python_version()                          # Current python version
         self.HOSTNAME               = socket.gethostname()                      # Hostname of the local machine
         self.IPV4                   = socket.gethostbyname(self.HOSTNAME)       # Local ipv4 of the local machine
@@ -28,6 +28,7 @@ class Base:
 
         self.abuseipdb_config:dict          = {}                                # AbuseIPDB Configuration
         self.abuseipdb_status:bool          = False                             # Default abuseipdb status
+        self.abuseipdb_report:bool          = False                             # Default abuseipdb report, if config file is set to true then Interceptor will send report intrusion to abuseIPDB
         self.abuseipdb_jail_score:int       = 100                               # Default score for the jail if not set in the configuration
         self.abuseipdb_jail_duration:int    = 600                               # Default duration for abusedbip if not set
 

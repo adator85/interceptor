@@ -51,6 +51,8 @@ class Parser:
                     self.Base.abuseipdb_config[key_exception] = value_ip_exceptions
                     if 'active' in self.global_api[key_exception]:
                         self.Base.abuseipdb_status = bool(self.global_api[key_exception]['active'])
+                    if 'report' in self.global_api[key_exception]:
+                        self.Base.abuseipdb_report = bool(self.global_api[key_exception]['report'])
                     if 'jail_score' in self.global_api[key_exception]:
                         self.Base.abuseipdb_jail_score = int(self.global_api[key_exception]['jail_score'])
                     if 'jail_duration' in self.global_api[key_exception]:
