@@ -1,5 +1,5 @@
 from importlib.util import find_spec
-from subprocess import check_call, Popen, PIPE, CalledProcessError
+from subprocess import check_call, CalledProcessError
 from platform import python_version
 from sys import exit
 import os, shutil
@@ -15,11 +15,13 @@ import os, shutil
 class Setup():
 
     def __init__(self) -> None:
+        self.__version__ = '1.0.0'
 
         if not self.is_root():
             self.iprint('/!\\ user must be root /!\\')
             exit(5)
 
+        # Python requirements modules
         self.required_python_modules = ['requests','sqlalchemy']
         
         self.install_folder = os.getcwd()
@@ -40,7 +42,7 @@ class Setup():
         self.cmd_status_service = ['systemctl','status','Interceptor']
 
         self.run_subprocess(self.cmd_debian_requirements)
-        
+
         self.run_subprocess(self.cmd_venv_command)
         if self.is_python_module_missing(self.required_python_modules):
             self.run_subprocess(self.cmd_python_requirements)

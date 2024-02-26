@@ -81,6 +81,11 @@ class Cron:
         for infos in fetch_result.fetchall():
             db_id, db_ip, db_module_name, db_reported_datetime, db_service_id = infos
             
+            # Get keyword attack
+            get_keyword_query = 'SELECT keyword FROM logs WHERE id = :id'
+            get_keyword_cursor = self.Base.db_execute_query(get_keyword_query, {'id': db_id})
+            keyword = get_keyword_cursor.fetchone()
+            
             _15_minutes_minus = self.Base.convert_to_datetime(self.Base.minus_one_hour(0.30))
             mes_donnees_check_ip = {'datetime': db_reported_datetime, 'ip': db_ip, '_15_minutes_minus': _15_minutes_minus}
             fetch_query = self.Base.db_execute_query(query_check_ip, mes_donnees_check_ip)
@@ -97,7 +102,7 @@ class Cron:
 
             # If ip and datetime is not found in reported_abuseipdb then send report
             if fetch_query.fetchone() is None and allow_report:
-                comment = f'Inteceptor Intrusion Detector: Authentication failed on {db_module_name} module PID: ({db_service_id})'
+                comment = f'Inteceptor Intrusion Detector: {keyword} on {db_module_name} module PID: ({db_service_id})'
                 
                 if db_module_name in categories:
                     category = categories[db_module_name]
