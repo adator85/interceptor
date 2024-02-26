@@ -30,7 +30,8 @@ class Cron:
         timer = timer_seconds
 
         while True:
-            self.Base.log_print(f'CRON - "{func.__name__}" - starting new job - next scheduled job in {str(timer)} Seconds','green')
+            if self.Base.DEBUG:
+                self.Base.log_print(f'CRON - "{func.__name__}" - starting new job - next scheduled job in {str(timer)} Seconds','green')
             func()
             time.sleep(timer)
 
@@ -59,7 +60,8 @@ class Cron:
                 # wait for 2 minutes before sending a new ip for verification
                 time.sleep(20)
         
-        self.Base.log_print(f'AbuseIPDB - CRON - end of the "{self.init_abuseipdb.__name__}" job!','yellow')
+        if self.Base.DEBUG:
+            self.Base.log_print(f'AbuseIPDB - CRON - end of the "{self.init_abuseipdb.__name__}" job!','yellow')
 
     def report_to_abuseipdb(self):
 
@@ -109,5 +111,7 @@ class Cron:
                 if self.Base.DEBUG:
                     self.Base.log_print(f'AbuseIPDB - Attack already reported to abuseipdb : {db_ip}','yellow')
 
-        self.Base.log_print(f'AbuseIPDB - CRON - end of the "{self.report_to_abuseipdb.__name__}" job!','yellow')
+        if self.Base.DEBUG:
+            self.Base.log_print(f'AbuseIPDB - CRON - end of the "{self.report_to_abuseipdb.__name__}" job!','yellow')
+
         pass
