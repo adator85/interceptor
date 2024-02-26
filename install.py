@@ -39,12 +39,9 @@ class Setup():
         self.cmd_start_service = ['systemctl','start','Interceptor']
         self.cmd_status_service = ['systemctl','status','Interceptor']
 
-        self.apt_command = ['apt', 'install']
-        self.apt_requirements = ['python3-pip']
-
-        self.run_subprocess(self.cmd_venv_command)
         self.run_subprocess(self.cmd_debian_requirements)
         
+        self.run_subprocess(self.cmd_venv_command)
         if self.is_python_module_missing(self.required_python_modules):
             self.run_subprocess(self.cmd_python_requirements)
 
