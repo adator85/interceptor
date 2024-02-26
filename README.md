@@ -27,18 +27,34 @@ GitHub Repository: https://github.com/adator85/Interceptor
 
 Requirements:
 
-    - Python 3.10 or higher with SQLAlchemy and requests installed 
-            - pip3 install sqlalchemy
-            - pip3 install requests
+    - Python3-venv and Python3-pip
+    - Python 3.10 with following libraries:
+            - requests
+            - sqlalchemy
     - Journalctl (for log file parsing)
     - iptables (for banning and releasing IP addresses)
 
 Installation:
 
-    - python3 -m venv .intenv
-    - source ./intenv/bin/activate
-    - python main.py
-    once the installation and the application is running, i would recommand to create a service and run the application as root.
+    - Automatic : 
+    mkdir ~/Interceptor
+    cd Interceptor
+    sudo su
+    python3 install.py
+
+    if you want to see the logs in real time :
+    tail -f ~/Interceptor/logs/intercept.log
+    
+    - Manual installation:
+    mkdir ~/Interceptor
+    cd Interceptor
+    sudo su
+    apt install -y python3-venv python3-pip
+    python3 -m venv .intvenv
+    source ./intvenv/bin/activate
+    python main.py
+    
+    once the installation and the application is running, i would recommand to create a service and run the application as root with systemctl.
 
 Contributions:
 
