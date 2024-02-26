@@ -80,6 +80,8 @@ class Setup():
             self.iprint("La commande s'est terminée avec succès.")
         except CalledProcessError as e:
             self.iprint(f"La commande a échoué avec le code de retour :{e.returncode}")
+            self.iprint(f"Try to install dependencies ...")
+            exit(5)
 
 
     def iprint(self, messsage:str) -> None:
