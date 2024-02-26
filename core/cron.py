@@ -102,7 +102,7 @@ class Cron:
 
             # If ip and datetime is not found in reported_abuseipdb then send report
             if fetch_query.fetchone() is None and allow_report:
-                comment = f'Inteceptor Intrusion Detector: {keyword} on {db_module_name} module PID: ({db_service_id})'
+                comment = f'Inteceptor Intrusion Detector: {keyword.keyword} on {db_module_name} module PID: ({db_service_id})'
                 
                 if db_module_name in categories:
                     category = categories[db_module_name]
