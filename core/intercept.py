@@ -51,7 +51,7 @@ class Intercept:
 
         # Charger les exceptions du process en cours
         for key, exception in modules[mod_name].items():
-            if type(exception) == list and key == 'exceptions':
+            if type(exception) == list and key == 'ip_exceptions':
                 for ip_exception in exception:
                     ip_exceptions.append(ip_exception)
 
@@ -82,6 +82,8 @@ class Intercept:
                                             if self.Base.ip_tables_add(mod_name, ip, self.Base.abuseipdb_jail_duration) > 0:
                                                 self.Base.log_print(f'{mod_name} - AbuseIPDB - "{ip}" - Moving to jail for {str(self.Base.abuseipdb_jail_duration)} seconds | Tor: {str(isTor)} / Reports: {str(totalReports)} / Score: {str(score)}', 'red')
                                             self.Base.clean_iptables()
+                                        else:
+                                            self.execute_action(ip, mod_name)
                                     else:
                                         self.execute_action(ip, mod_name)
        
