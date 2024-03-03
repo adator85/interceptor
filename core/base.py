@@ -18,6 +18,7 @@ class Base:
 
         self.VERSION                = '1.6.3'                                   # MAJOR.MINOR.BATCH
         self.CURRENT_PYTHON_VERSION = python_version()                          # Current python version
+        self.DATE_FORMAT            = '%Y-%m-%d %H:%M:%S'                       # The date format
         self.HOSTNAME               = socket.gethostname()                      # Hostname of the local machine
         self.IPV4                   = socket.gethostbyname(self.HOSTNAME)       # Local ipv4 of the local machine
         self.PULSE                  = 5                                         # Pulse in seconds
@@ -59,7 +60,7 @@ class Base:
         """
         Retourne une date au format string (2023-12-23 20:50:59)
         """
-        currentdate = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        currentdate = datetime.now().strftime(self.DATE_FORMAT)
         return currentdate
 
     def convert_to_datetime(self, datetime_text:str) -> datetime:
@@ -71,9 +72,7 @@ class Base:
         Returns:
             datetime: datetime object
         """
-        format = '%Y-%m-%d %H:%M:%S'
-
-        conveted_datetime = datetime.strptime(datetime_text, format)
+        conveted_datetime = datetime.strptime(datetime_text, self.DATE_FORMAT)
 
         return conveted_datetime
 
@@ -83,7 +82,7 @@ class Base:
         current_datetime = datetime.now()
         result_datetime = current_datetime - timedelta(hours=hours)
 
-        result_datetime = result_datetime.strftime('%Y-%m-%d %H:%M:%S')
+        result_datetime = result_datetime.strftime(self.DATE_FORMAT)
 
         return result_datetime
 
@@ -537,7 +536,7 @@ class Base:
             # Defining the api-endpoint
             url = f'{api_url}report'
 
-            converted_attack_datetime = datetime.strptime(attack_datetime, "%Y-%m-%d %H:%M:%S")
+            converted_attack_datetime = datetime.strptime(attack_datetime, self.DATE_FORMAT)
             current_timezone = converted_attack_datetime.astimezone().tzinfo
             converted_attack_datetime = converted_attack_datetime.replace(tzinfo=current_timezone)
             timestamp_attack_datetime = converted_attack_datetime.isoformat()
