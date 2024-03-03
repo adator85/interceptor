@@ -57,9 +57,9 @@ class Base:
 
     def get_sdatetime(self) -> str:
         """
-        Retourne une date au format string (24-12-2023 20:50:59)
+        Retourne une date au format string (2023-12-23 20:50:59)
         """
-        currentdate = datetime.now().strftime('%d-%m-%Y %H:%M:%S')
+        currentdate = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
         return currentdate
 
     def convert_to_datetime(self, datetime_text:str) -> datetime:
@@ -71,7 +71,7 @@ class Base:
         Returns:
             datetime: datetime object
         """
-        format = '%d-%m-%Y %H:%M:%S'
+        format = '%Y-%m-%d %H:%M:%S'
 
         conveted_datetime = datetime.strptime(datetime_text, format)
 
@@ -83,7 +83,7 @@ class Base:
         current_datetime = datetime.now()
         result_datetime = current_datetime - timedelta(hours=hours)
 
-        result_datetime = result_datetime.strftime('%d-%m-%Y %H:%M:%S')
+        result_datetime = result_datetime.strftime('%Y-%m-%d %H:%M:%S')
 
         return result_datetime
 
@@ -537,7 +537,7 @@ class Base:
             # Defining the api-endpoint
             url = f'{api_url}report'
 
-            converted_attack_datetime = datetime.strptime(attack_datetime, "%d-%m-%Y %H:%M:%S")
+            converted_attack_datetime = datetime.strptime(attack_datetime, "%Y-%m-%d %H:%M:%S")
             current_timezone = converted_attack_datetime.astimezone().tzinfo
             converted_attack_datetime = converted_attack_datetime.replace(tzinfo=current_timezone)
             timestamp_attack_datetime = converted_attack_datetime.isoformat()
