@@ -2,23 +2,48 @@ import time
 from core import base, parser
 
 class Cron:
-
+    """### Cron class
+    ++ Cron is called from main.py after parser.py
+    + main.py:
+        - base.py
+        - parser.py
+        - cron.py
+        - interceptprocess.py
+    + It create threads heartbeat every (self.Base.PULSE) seconds to run
+    periodic actions
+    + It trigger every hour (self.Base.clean_db_logs) method via cron
+    + It trigger (self.init_abuseipdb) method via cron
+    + It trigger (self.report_to_abuseipdb) method via cron
+    """
 
     def __init__(self, Base:base.Base, Parser:parser.Parser) -> None:
+        """### Cron class
+        - It create threads heartbeat every (self.Base.PULSE) seconds to run
+        periodic actions
+        - It trigger every hour (self.Base.clean_db_logs) method via cron
+        - It trigger (self.init_abuseipdb) method via cron
+        - It trigger (self.report_to_abuseipdb) method via cron
 
+        Args:
+            Base (base.Base): Existing Basic Interceptor class
+            Parser (parser.Parser): Existing instance of Parser class
+
+        Returns:
+            None: No returns
+        """
         self.Base = Base
         self.Parser = Parser
 
         return None
 
     def init(self) -> None:
-        
+
         # Initialiser heartbeat
         self.Base.create_thread(self.Base.heartbeat, (self.Base.PULSE, ))
         self.Base.create_thread(self.cron, (self.Base.clean_db_logs, 60 * 60))
 
         if self.Base.abuseipdb_status:
-            self.Base.create_thread(self.cron, (self.init_abuseipdb, 120))
+            self.Base.create_thread(self.cron, (self.init_abuseipdb, 20))
         
         if self.Base.abuseipdb_report and self.Base.abuseipdb_status:
             self.Base.create_thread(self.cron, (self.report_to_abuseipdb, 600))
@@ -26,7 +51,12 @@ class Cron:
         return None
 
     def cron(self, func:object, timer_seconds:int) -> None:
+        """Execute a method every X seconds
 
+        Args:
+            func (object): The method/function to call
+            timer_seconds (int): The time in seconds between every execution
+        """
         timer = timer_seconds
 
         while True:
@@ -57,8 +87,8 @@ class Cron:
                 self.Base.log_print(f'AbuseIPDB - Waiting for information about IP : {ip}','yellow')
                 self.Base.check_endpoint_abuseipdb(self.Parser.global_api, ip)
 
-                # wait for 2 minutes before sending a new ip for verification
-                time.sleep(20)
+                # wait for 10 seconds before sending a new ip for verification
+                time.sleep(10)
         
         if self.Base.DEBUG:
             self.Base.log_print(f'AbuseIPDB - CRON - end of the "{self.init_abuseipdb.__name__}" job!','yellow')

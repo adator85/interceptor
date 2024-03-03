@@ -6,7 +6,15 @@ from sqlalchemy.sql import text
 from platform import python_version
 
 class Base:
-
+    '''### Class contain all the basic methods
+    - Global Interceptor default variables
+    - All datetime methods needed by Interceptor
+    - database connections
+    - Thread creation methods
+    - database cleaning methods
+    - iptables cleaning methods
+    - Abuseipdb interactions methods
+    '''
     __COLORS = {'white': '\033[97m', 
                 'green': '\033[92m', 
                 'red': '\033[91m',

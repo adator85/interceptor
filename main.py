@@ -2,6 +2,8 @@ import time
 from core.installation import Install
 
 def main():
+    '''Interceptor main program
+    '''
     Install()   # Run installation if needed
 
     from core.base import Base
@@ -9,13 +11,13 @@ def main():
     from core.cron import Cron
     from core.interceptprocess import InterceptProcess
 
-    BaseInstance = Base()
-    ParserInstance = Parser(BaseInstance)
-    CronInstance = Cron(BaseInstance, ParserInstance)
-    CronInstance.init()
-    IProcInstance = InterceptProcess(ParserInstance, BaseInstance)
+    BaseInstance = Base()                                           # Initiat the main class
+    ParserInstance = Parser(BaseInstance)                           # Initiat the parser class
+    CronInstance = Cron(BaseInstance, ParserInstance)               # Initial the cron class
+    CronInstance.init()                                             # Start cron jobs
+    IProcInstance = InterceptProcess(ParserInstance, BaseInstance)  # Start SubProcesses
 
-    try:    
+    try:
 
         while BaseInstance.hb_active:
             time.sleep(5)
@@ -23,7 +25,7 @@ def main():
     finally:
         for subprocess in IProcInstance.subprocess:
             print(f'Terminate subprocess {subprocess}')
-            subprocess.terminate()  
+            subprocess.terminate()
 
 if __name__ == "__main__":
     main()
