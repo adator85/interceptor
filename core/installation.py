@@ -7,7 +7,7 @@ class Install:
 
     def __init__(self) -> None:
 
-        self.PYTHON_MIN_VERSION = '3.10'
+        self.PYTHON_MIN_VERSION = '3.9'
         self.module_to_install = ['sqlalchemy','requests']
         self.updating_pip = False
 
