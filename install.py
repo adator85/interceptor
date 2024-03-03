@@ -15,7 +15,8 @@ import os, shutil
 class Setup():
 
     def __init__(self) -> None:
-        self.__version__ = '1.0.0'
+        self.__version__        = '1.1.0'
+        self.PYTHON_MIN_VERSION = '3.10'
 
         if not self.is_root():
             self.iprint('/!\\ user must be root /!\\')
@@ -82,6 +83,23 @@ class Setup():
             self.iprint(f"Try to install dependencies ...")
             exit(5)
 
+    def checkPythonVersion(self) -> bool:
+        """Test si la version de python est autorisée ou non
+
+        Returns:
+            bool: True si la version de python est autorisé sinon False
+        """
+        python_required_version = self.PYTHON_MIN_VERSION.split('.')
+        python_current_version = python_version().split('.')
+
+        if int(python_current_version[0]) < int(python_required_version[0]):
+            print(f"## Your python version must be greather than or equal to {self.PYTHON_MIN_VERSION} ##")
+            return False
+        elif int(python_current_version[1]) < int(python_required_version[1]):
+            print(f"### Your python version must be greather than or equal to {self.PYTHON_MIN_VERSION} ###")
+            return False
+
+        return True
 
     def iprint(self, messsage:str) -> None:
 
