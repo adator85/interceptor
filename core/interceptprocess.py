@@ -98,4 +98,3 @@ class InterceptProcess:
             subprocess.terminate()
 
         return None
-    

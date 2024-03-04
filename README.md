@@ -28,7 +28,7 @@ GitHub Repository: https://github.com/adator85/Interceptor
 Requirements:
 
     - Python3-venv and Python3-pip
-    - Python 3.9 with following libraries:
+    - Python >=3.9 with following libraries:
             - requests
             - sqlalchemy
     - Journalctl (for log file parsing)
@@ -36,20 +36,18 @@ Requirements:
 
 Installation:
 
-    - Automatic : 
-    mkdir ~/Interceptor
-    cd Interceptor
+    - Automatic installation (root):
     sudo su
-    python3 install.py
-
+    git clone https://github.com/adator85/Interceptor.git ~/Interceptor && python3 ~/Interceptor/install.py
+    
     if you want to see the logs in real time :
     tail -f ~/Interceptor/logs/intercept.log
     
-    - Manual installation:
+    - Manual installation (root):
     mkdir ~/Interceptor
     cd Interceptor
     sudo su
-    apt install -y python3-venv python3-pip
+    apt install -y python3-venv python3-pip, iptables
     python3 -m venv .intvenv
     source ./intvenv/bin/activate
     python main.py

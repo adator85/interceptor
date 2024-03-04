@@ -1,4 +1,4 @@
-import time, signal
+import time
 from core.installation import Install
 
 def main():
@@ -21,8 +21,6 @@ def main():
 
         while BaseInstance.hb_active:
             time.sleep(5)
-
-        signal.signal(signal.SIGTERM, IProcInstance.close_interceptor())
 
     except KeyboardInterrupt:
         print('\n\!// Le program a été Interrompu \!//')
