@@ -22,7 +22,10 @@ def main():
         while BaseInstance.hb_active:
             time.sleep(5)
 
+    except KeyboardInterrupt:
+        print('\n\!// Le program a été Interrompu \!//')
     finally:
+        BaseInstance.clean_iptables()                               # Clean iptables
         for subprocess in IProcInstance.subprocess:
             print(f'Terminate subprocess {subprocess}')
             subprocess.terminate()

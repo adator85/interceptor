@@ -21,6 +21,10 @@ class Setup():
         if not self.is_root():
             self.iprint('/!\\ user must be root /!\\')
             exit(5)
+        
+        if not self.checkPythonVersion():
+            self.iprint(f'/!\\ You must use correct version of python > {self.PYTHON_MIN_VERSION} /!\\')
+            exit(5)
 
         # Python requirements modules
         self.required_python_modules = ['requests','sqlalchemy']
@@ -33,7 +37,7 @@ class Setup():
 
       
         self.cmd_venv_command = ['python3', '-m', 'venv', self.virtual_env_folder_name]
-        self.cmd_debian_requirements = ['apt', 'install', '-y', 'python3-pip', 'python3-venv']
+        self.cmd_debian_requirements = ['apt', 'install', '-y', 'python3-pip', 'python3-venv', 'ipatables']
         
         self.cmd_python_requirements = [f'{self.install_folder}{os.sep}{self.virtual_env_folder_name}{os.sep}bin{os.sep}pip', 'install']
         self.cmd_python_requirements.extend(self.required_python_modules)
