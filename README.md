@@ -38,7 +38,7 @@ Installation:
 
     - Automatic installation (root):
     sudo su
-    git clone https://github.com/adator85/Interceptor.git ~/Interceptor && python3 ~/Interceptor/install.py
+    git clone https://github.com/adator85/Interceptor.git ~/Interceptor && cd ~/Interceptor && python3 ~/Interceptor/install.py
     
     if you want to see the logs in real time :
     tail -f ~/Interceptor/logs/intercept.log
