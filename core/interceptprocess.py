@@ -1,4 +1,5 @@
 from subprocess import Popen, PIPE
+from typing import Union
 import os
 from core import parser, base, intercept
 
@@ -49,7 +50,7 @@ class InterceptProcess:
         
         return None
 
-    def _create_subprocess(self, logs_source:str=None) -> Popen[bytes] | None:
+    def _create_subprocess(self, logs_source:str=None) -> Union[Popen[bytes], None]:
 
         if logs_source is None:
             process = Popen(['journalctl', '-f'], stdout=PIPE, stderr=PIPE)
@@ -85,4 +86,16 @@ class InterceptProcess:
                 Intercept.run_process(output)
                 if self.Base.DEBUG:
                     print(output)
+
+    def close_interceptor(self) -> None:
+        """close interceptor
+        """
+
+        self.Base.clean_iptables()                      # We clean iptables and iptables local table
+
+        for subprocess in self.subprocess:
+            self.Base.log_print(f'Terminate subprocess {subprocess}', 'green')
+            subprocess.terminate()
+
+        return None
     

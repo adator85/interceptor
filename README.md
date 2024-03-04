@@ -28,7 +28,7 @@ GitHub Repository: https://github.com/adator85/Interceptor
 Requirements:
 
     - Python3-venv and Python3-pip
-    - Python 3.10 with following libraries:
+    - Python 3.9 with following libraries:
             - requests
             - sqlalchemy
     - Journalctl (for log file parsing)

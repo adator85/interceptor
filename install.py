@@ -16,7 +16,7 @@ class Setup():
 
     def __init__(self) -> None:
         self.__version__        = '1.1.0'
-        self.PYTHON_MIN_VERSION = '3.10'
+        self.PYTHON_MIN_VERSION = '3.9'
 
         if not self.is_root():
             self.iprint('/!\\ user must be root /!\\')

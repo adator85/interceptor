@@ -4,6 +4,7 @@ from datetime import datetime, timedelta
 from sqlalchemy import create_engine, Engine, Connection, CursorResult
 from sqlalchemy.sql import text
 from platform import python_version
+from typing import Union, List, Literal, Dict
 
 class Base:
     '''### Class contain all the basic methods
@@ -15,7 +16,7 @@ class Base:
     - iptables cleaning methods
     - Abuseipdb interactions methods
     '''
-    __COLORS = {'white': '\033[97m', 
+    __COLORS:Literal['white', 'green','red','yellow','reset'] = {'white': '\033[97m', 
                 'green': '\033[92m', 
                 'red': '\033[91m',
                 'yellow': '\033[93m',
@@ -415,7 +416,7 @@ class Base:
 
         return response
     
-    def check_endpoint_abuseipdb(self, parsed_api:dict, ip_to_check:str) -> dict | None:
+    def check_endpoint_abuseipdb(self, parsed_api:dict, ip_to_check:str) -> Union[dict, None]:
 
         api_name = 'abuseipdb'
 
