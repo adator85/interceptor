@@ -116,6 +116,9 @@ class Cron:
             get_keyword_query = 'SELECT keyword FROM logs WHERE id = :id'
             get_keyword_cursor = self.Base.db_execute_query(get_keyword_query, {'id': db_id})
             keyword = get_keyword_cursor.fetchone()
+
+            if keyword is None:
+                continue
             
             _15_minutes_minus = self.Base.convert_to_datetime(self.Base.minus_one_hour(0.30))
             mes_donnees_check_ip = {'datetime': db_reported_datetime, 'ip': db_ip}
@@ -133,6 +136,7 @@ class Cron:
 
             # If ip and datetime is not found in reported_abuseipdb then send report
             if fetch_query.fetchone() is None and allow_report:
+                
                 comment = f'Inteceptor Intrusion Detector: {keyword.keyword} on {db_module_name} module PID: ({db_service_id})'
                 
                 if db_module_name in categories:
