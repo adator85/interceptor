@@ -52,7 +52,7 @@ Installation:
         source .intvenv/bin/activate
         python main.py
     
-    once the installation and the application is running, i would recommand to create a service and run the application as root with systemctl.
+        once the installation and the application is running, i would recommand to create a service and run the application as root with systemctl.
 
 Contributions:
 
