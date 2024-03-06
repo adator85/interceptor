@@ -37,20 +37,20 @@ Requirements:
 Installation:
 
     - Automatic installation (root):
-    sudo su
-    git clone https://github.com/adator85/Interceptor.git ~/Interceptor && cd ~/Interceptor && python3 ~/Interceptor/install.py
-    
-    if you want to see the logs in real time :
-    tail -f ~/Interceptor/logs/intercept.log
+        sudo su
+        git clone https://github.com/adator85/Interceptor.git ~/Interceptor && cd ~/Interceptor && python3 ~/Interceptor/install.py
+        
+        if you want to see the logs in real time :
+        tail -f ~/Interceptor/logs/intercept.log
     
     - Manual installation (root):
-    mkdir ~/Interceptor
-    cd Interceptor
-    sudo su
-    apt install -y python3-venv python3-pip, iptables
-    python3 -m venv .intvenv
-    source ./intvenv/bin/activate
-    python main.py
+        cd ~
+        git clone https://github.com/adator85/Interceptor.git
+        cd Interceptor        
+        apt install -y python3-venv python3-pip iptables
+        python3 -m venv .intvenv
+        source .intvenv/bin/activate
+        python main.py
     
     once the installation and the application is running, i would recommand to create a service and run the application as root with systemctl.
 
