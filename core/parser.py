@@ -11,11 +11,11 @@ class Parser:
         self.global_ip_exceptions:list = []             # Global ip exceptions
 
         self.global_api:dict[any, dict] = {}            # Global API for ip checks
-        
+
         self.module_names:list = []                     # List of module names () ==> ["sshd","dovecot","proftpd"]
         self.filenames:list = []                        # Liste contenant le nom des fichiers de configuration json
         self.errors:list = []                           # check errors
-        
+
         self.load_global_json_configuration()
         self.load_json_configuration()
         self.parse_json()
@@ -31,7 +31,7 @@ class Parser:
     def load_global_json_configuration(self) -> None:
         """Load global configuration file
         """
-        
+
         filename = f'core{os.sep}global.json'
 
         with open(filename, 'r') as globalfile:
@@ -43,10 +43,10 @@ class Parser:
                 if type(value_ip_exceptions) == list and key_exception == 'ip_exceptions':
                     for global_ip_exception in value_ip_exceptions:
                         self.global_ip_exceptions.append(global_ip_exception)
-                
+
                 if type(value_ip_exceptions) == dict and key_exception == 'abuseipdb':
                     self.global_api[key_exception] = value_ip_exceptions
-                    
+
                     # Send information to Base Instance
                     self.Base.abuseipdb_config[key_exception] = value_ip_exceptions
                     if 'active' in self.global_api[key_exception]:
@@ -95,15 +95,15 @@ class Parser:
             self.Base.log_print(f'"{self.load_modules.__name__}" Key Error detected - {ke}','red')
 
     def parse_json(self) -> None:
-        
+
         # Charger le nom des modules existants
         for module_name in self.modules:
             self.module_names.append(module_name)
-        
+
         return None
 
     def check_json_structure(self, json_data:dict, filename:str) -> bool:
-        
+
         response = True
         mandatory_keys = ['module_name','rgx_service_name','rgx_service_id','filters','actions']
 
@@ -111,7 +111,6 @@ class Parser:
             if not mandator_key in json_data:
                 self.errors.append(f'Key : {mandator_key} missing in {filename}')
                 response = False
-
 
         return response
 
@@ -123,10 +122,10 @@ class Parser:
         hn += f'#    Interceptor Version    : {self.Base.VERSION}\n'
         hn += f'#    Python Version         : {self.Base.CURRENT_PYTHON_VERSION}\n'
         hn += f'#    Modules loaded         :\n'
-        
+
         for file in self.filenames:
             hn += f'#                            - {file}\n'
-        
+
         taille = len(message) + 5
 
         print('#' * taille)

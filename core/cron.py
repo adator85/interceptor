@@ -89,7 +89,7 @@ class Cron:
 
                 # wait for 10 seconds before sending a new ip for verification
                 time.sleep(10)
-        
+
         if self.Base.DEBUG:
             self.Base.log_print(f'AbuseIPDB - CRON - end of the "{self.init_abuseipdb.__name__}" job!','yellow')
 
@@ -105,13 +105,13 @@ class Cron:
         query_reported_abuseipdb = '''SELECT id FROM reported_abuseipdb WHERE reported_datetime = :datetime and ip = :ip'''
 
         query_check_reported_date = '''SELECT MAX(datetime) as latest_reported_datetime FROM reported_abuseipdb WHERE ip = :ip GROUP BY ip'''
-        
+
         categories = {'sshd': [22, 18]}
         category:list = []
 
         for log in fetch_logs.fetchall():
             db_id, db_ip, db_module_name, db_reported_datetime, db_service_id = log
-            
+
             # Get keyword attack
             get_keyword_query = 'SELECT keyword FROM logs WHERE id = :id'
             get_keyword_cursor = self.Base.db_execute_query(get_keyword_query, {'id': db_id})
@@ -119,7 +119,7 @@ class Cron:
 
             if keyword is None:
                 continue
-            
+
             _15_minutes_minus = self.Base.convert_to_datetime(self.Base.minus_one_hour(0.30))
             mes_donnees_check_ip = {'datetime': db_reported_datetime, 'ip': db_ip}
             fetch_query = self.Base.db_execute_query(query_reported_abuseipdb, mes_donnees_check_ip)

@@ -9,7 +9,7 @@ class Intercept:
     __PATTERN_IPV6 = r'([0-9a-fA-F]{1,4}(?::[0-9a-fA-F]{1,4}){7})'
 
     def __init__(self, base: base.Base, parser: parser.Parser, subprocess:Popen, subprocess_detail:dict) -> None:
-        
+
         self.Base                       = base                              # Création d'une instance Base()
         self.Parser                     = parser                            # Création d'une instance Parser()
         self.subprocess                 = subprocess                        # Get the source of the log
@@ -32,7 +32,7 @@ class Intercept:
                     self.record_entry(output, mod_name)
 
         return None
-    
+
     def record_entry(self, output:str, mod_name:str) -> None:
 
         ip = ''
@@ -63,15 +63,15 @@ class Intercept:
                     for filter_name, filter_value in filters.items():
                         lookup = re.search(filter_value, output)
                         if lookup:
-                            
+
                             # Si l'ip est dans liste d'exception globale
                             if ip in self.Parser.global_ip_exceptions:
                                 self.Base.log_print(f'Global exception - [{ip}] was exempted from the analysis ...', 'red')
-                            
+
                             # Si l'ip est dans la liste de l'exception du module
                             elif ip in ip_exceptions:
                                 self.Base.log_print(f'Module "{mod_name}" exception - [{ip}] was exempted from the analysis ...', 'red')
-                            
+
                             else:
                                 if self.Base.db_record_ip(service_id, mod_name, ip, filter_name, user) > 0:
                                     self.Base.log_print(f'{mod_name} - {filter_name} - {service_id} - {ip} - {user} - recorded', 'white')
@@ -87,7 +87,7 @@ class Intercept:
                                             self.execute_action(ip, mod_name)
                                     else:
                                         self.execute_action(ip, mod_name)
-       
+
         return None
 
     def execute_action(self, received_ip:str, mod_name:str) -> None:
@@ -161,7 +161,7 @@ class Intercept:
             service_id = f'{service_id}_{unixtime}'
 
         return service_id
-    
+
     def get_ipv4_address(self, output:str, mod_name:str) -> Union[str, None]:
         """Retourn l'adresse ip si disponible
 
@@ -188,7 +188,7 @@ class Intercept:
             ip_address = list_search[0]
 
         return ip_address
-    
+
     def get_ipv6_address(self, output:str, mod_name:str) -> Union[str, None]:
         """Retourn l'adresse ip si disponible
 
@@ -207,14 +207,14 @@ class Intercept:
                         list_search = list(lookup_ip.groups())
                         ip_address = list_search[0]
                         return ip_address
-        
+
         lookup_ip_address = re.search(self.__PATTERN_IPV6, output)
         if lookup_ip_address:
             list_search = list(lookup_ip_address.groups())
             ip_address = list_search[0]
 
         return ip_address
-    
+
     def get_users_attempt(self, output:str, mod_name:str) -> Union[str, None]:
         """Retourn le user si disponible
 
@@ -231,7 +231,7 @@ class Intercept:
             r'^.*Failed password for invalid user (\D*?)\s.*$',
             r'^.*Failed password for (\D*?)\s.*$'
         ]
-        
+
         if self.subprocess_detail[mod_name] == self.subprocess:
             if 'rgx_username' in self.Parser.modules[mod_name]:
                 pattern = self.Parser.modules[mod_name]['rgx_username']
@@ -246,5 +246,5 @@ class Intercept:
             if lookup_user:
                 list_search = list(lookup_user.groups())
                 user = list_search[0]
-        
+
         return user

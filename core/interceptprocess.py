@@ -5,25 +5,23 @@ from core import parser, base, intercept
 
 class InterceptProcess:
 
-    def __init__(self, parser:parser.Parser, base:base.Base) -> None:
-        # Initialiser les processus
+    def __init__(self, base:base.Base, parser:parser.Parser) -> None:
+        """Initiate subprocesses
+
+        Args:
+            base (base.Base): Current Intance of Base class
+            parser (parser.Parser): Current Instance of Parser class
+        """
 
         self.subprocess:list[Popen[bytes]] = []
-        self.subprocess_detail:dict = {}        
-        '''
-        {
-            'module_1': 'journalctl',
-            'module_2': 'journalctl',
-            'module_3': '/var/log/proftpd/proftpd.log'
-        }
-        '''
+        self.subprocess_detail:dict = {}
 
         self.Parser = parser
         self.Base = base
 
         self.init_processes()
         self.create_threads_for_processes()
-       
+
         return None
 
     def init_processes(self) -> None:
@@ -42,12 +40,12 @@ class InterceptProcess:
                 # Run subprocess with journalctl -f
                 isJournalctl = True
                 module_names_with_single_subprocess.append(mod_name)
-        
+
         if isJournalctl:
             subprocess = self._create_subprocess()
             for mod_name_ssprocess in module_names_with_single_subprocess:
                 self.subprocess_detail[mod_name_ssprocess] = subprocess
-        
+
         return None
 
     def _create_subprocess(self, logs_source:str=None) -> Union[Popen[bytes], None]:
@@ -56,7 +54,7 @@ class InterceptProcess:
             process = Popen(['journalctl', '-f'], stdout=PIPE, stderr=PIPE)
             self.subprocess.append(process)
             return process
-        
+
         if not os.path.exists(logs_source):
             self.Base.log_print(f'{self._create_subprocess.__name__} - {logs_source} - no such directory or file','red')
             return None
@@ -68,18 +66,18 @@ class InterceptProcess:
         return process
 
     def create_threads_for_processes(self) -> None:
-        """Execute chaque subprocess dans un thread séparé
+        """Execute every subprocess in a separate thread
         """
 
         for subprocess in self.subprocess:
             self.Base.create_thread(self._run_subprocess, (subprocess, ))
 
         return None
-    
+
     def _run_subprocess(self, subprocess:Popen[bytes]) -> None:
-        
+
         Intercept = intercept.Intercept(self.Base, self.Parser, subprocess, self.subprocess_detail)
-        
+
         while True:
             output = subprocess.stdout.readline().decode('utf-8').strip()
             if output:

@@ -24,6 +24,7 @@ def main():
 
     except KeyboardInterrupt:
         print('\n\!// Le program a été Interrompu \!//')
+
     finally:
         BaseInstance.clean_iptables()                               # Clean iptables
         for subprocess in IProcInstance.subprocess:

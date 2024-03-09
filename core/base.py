@@ -1,10 +1,10 @@
-from subprocess import run, PIPE, Popen
+from subprocess import run, PIPE
 import os, threading, time, socket, json, requests
 from datetime import datetime, timedelta
 from sqlalchemy import create_engine, Engine, Connection, CursorResult
 from sqlalchemy.sql import text
 from platform import python_version
-from typing import Union, List, Literal, Dict
+from typing import Union, Literal
 
 class Base:
     '''### Class contain all the basic methods
@@ -16,8 +16,9 @@ class Base:
     - iptables cleaning methods
     - Abuseipdb interactions methods
     '''
-    __COLORS:Literal['white', 'green','red','yellow','reset'] = {'white': '\033[97m', 
-                'green': '\033[92m', 
+
+    __COLORS:dict = {'white': '\033[97m',
+                'green': '\033[92m',
                 'red': '\033[91m',
                 'yellow': '\033[93m',
                 'reset':'\033[0m'
@@ -25,7 +26,7 @@ class Base:
 
     def __init__(self) -> None:
 
-        self.VERSION                = '1.6.5'                                   # MAJOR.MINOR.BATCH
+        self.VERSION                = '1.6.6'                                   # MAJOR.MINOR.BATCH
         self.CURRENT_PYTHON_VERSION = python_version()                          # Current python version
         self.DATE_FORMAT            = '%Y-%m-%d %H:%M:%S'                       # The date format
         self.HOSTNAME               = socket.gethostname()                      # Hostname of the local machine
@@ -37,11 +38,11 @@ class Base:
         self.default_ipv4           = '0.0.0.0'                                 # Default ipv4 to be used by Interceptor
 
         self.abuseipdb_config:dict          = {}                                # AbuseIPDB Configuration
+        self.abuseipdb_timeout:int          = 5                                 # AbuseIPDB default Timeout
         self.abuseipdb_status:bool          = False                             # Default abuseipdb status
         self.abuseipdb_report:bool          = False                             # Default abuseipdb report, if config file is set to true then Interceptor will send report intrusion to abuseIPDB
         self.abuseipdb_jail_score:int       = 100                               # Default score for the jail if not set in the configuration
         self.abuseipdb_jail_duration:int    = 600                               # Default duration for abusedbip if not set
-
 
         self.lock = threading.RLock()                                           # Define RLock for multithreading
         self.hb_active:bool = True                                              # Define heartbeat variable
@@ -49,7 +50,7 @@ class Base:
 
         self.logs_init()                                                        # Init logs directory and log file.
         self.engine, self.cursor = self.db_init()                               # Init Engine & Cursor
-        self.__db_create_tables()                                               # Create tables        
+        self.__db_create_tables()                                               # Create tables
 
         return None
 
@@ -107,12 +108,12 @@ class Base:
 
         if not os.path.exists(f'{db_directory}'):
             os.makedirs(db_directory)
-        
+
         engine = create_engine(f'sqlite:///{db_full_path}', echo=False)
         cursor = engine.connect()
 
         return engine, cursor
-    
+
     def db_execute_query(self, query:str, params:dict = {}) -> CursorResult:
 
         with self.lock:
@@ -125,7 +126,7 @@ class Base:
             self.cursor.commit()
 
             return response
-    
+
     def __db_create_tables(self) -> None:
 
         table_logs = f'''CREATE TABLE IF NOT EXISTS logs (
@@ -218,7 +219,7 @@ class Base:
 
         r = self.db_execute_query(query, mes_donnees)
         return r.rowcount
-    
+
     def db_record_iptables_logs(self, module_name:str, ip:str, duration:int) -> None:
 
         query = '''INSERT INTO iptables_logs (datetime, module_name, ip, duration) 
@@ -254,10 +255,10 @@ class Base:
             os.makedirs(logs_directory)
             with open(logs_full_path, 'a+') as log:
                 log.write(f'{self.get_sdatetime()} - Interceptor Init logs\n')
-        
+
         return None
 
-    def log_print(self, string:str, color:str = None) -> None:
+    def log_print(self, string:str, color:Literal['white', 'green','red','yellow'] = None) -> None:
         """Print logs in the terminal and record it in a file
 
         Args:
@@ -269,18 +270,18 @@ class Base:
 
         if color is None:
             print(f'{self.get_sdatetime()}: {string}')
-        
+
         for key_color, value_color in self.__COLORS.items():
             if key_color == color:
                 print(f'{value_color}{self.get_sdatetime()}: {string}{reset}')
                 isExist_color = True
-        
+
         if not isExist_color:
             print(f'{self.get_sdatetime()}: {string}')
 
         logs_directory = f'logs{os.sep}'
         logs_full_path = f'{logs_directory}intercept.log'
-        
+
         with open(logs_full_path, 'a+') as log:
             log.write(f'{self.get_sdatetime()}: {string}\n')
             log.close()
@@ -308,7 +309,7 @@ class Base:
         while self.hb_active:
             time.sleep(beat)
             self.clean_iptables()
-        
+
         return None
 
     def get_no_filters_files(self) -> int:
@@ -334,7 +335,7 @@ class Base:
         query = f'''SELECT ip, datetime, duration, module_name 
                     FROM iptables
                 '''
-        
+
         cursorResult = self.db_execute_query(query)
         r = cursorResult.fetchall()
 
@@ -348,14 +349,16 @@ class Base:
                 self.ip_tables_remove(db_ip)
                 self.log_print(f'{db_module_name} - "{db_ip}" - released from jail', 'green')
 
+        return None
+
     def clean_db_logs(self) -> None:
         """Clean logs that they have more than 24 hours
         """
-        
+
         query = "DELETE FROM logs WHERE ip = :ip"
         mes_donnees = {'ip': self.default_ipv4}
         default_ip_request = self.db_execute_query(query,mes_donnees)
-        
+
         query = '''DELETE FROM logs WHERE datetime <= :datetime'''
         mes_donnees = {'datetime':self.minus_one_hour(24)}
         r_datetime = self.db_execute_query(query, mes_donnees)
@@ -378,25 +381,28 @@ class Base:
 
         if self.ip_tables_isExist(ip):
             return 0
-        
+
         system_command = '/sbin/iptables -A INPUT -s {} -j REJECT'.format(ip)
         os.system(system_command)
         rowcount = self.db_record_iptables(module_name, ip, duration_seconds)
         self.db_record_iptables_logs(module_name, ip, duration_seconds)
+
         return rowcount
 
     def ip_tables_remove(self, ip:str) -> None:
 
         system_command = '/sbin/iptables -D INPUT -s {} -j REJECT'.format(ip)
         os.system(system_command)
+
         return None
 
     def ip_tables_reset(self) -> None:
 
         system_command = '/sbin/iptables -F'
         os.system(system_command)
+
         return None
-    
+
     def ip_tables_isExist(self, ip:str) -> bool:
         """Vérifie si une ip existe dans iptables
 
@@ -406,7 +412,7 @@ class Base:
         Returns:
             bool: True si l'ip existe déja
         """
-        
+
         # check_rule = run(['/sbin/iptables','-C','INPUT','-s',ip,'-j','REJECT'],stdout=subprocess.PIPE, stderr=subprocess.PIPE).returncode == 0
         check_rule = run(['/sbin/iptables','-C','INPUT','-s',ip,'-j','REJECT'],stdout=PIPE, stderr=PIPE).returncode == 0
         response = False
@@ -415,7 +421,7 @@ class Base:
             response = True
 
         return response
-    
+
     def check_endpoint_abuseipdb(self, parsed_api:dict, ip_to_check:str) -> Union[dict, None]:
 
         api_name = 'abuseipdb'
@@ -447,7 +453,7 @@ class Base:
             'Key': api_key
         }
         try:
-            response = requests.request(method='GET', url=url, headers=headers, params=querystring, timeout=5)
+            response = requests.request(method='GET', url=url, headers=headers, params=querystring, timeout=self.abuseipdb_timeout)
 
             # Formatted output
             req = json.loads(response.text)
@@ -493,7 +499,7 @@ class Base:
         res_sql = self.db_execute_query(query, mes_donnees)
 
         fetch_result = res_sql.fetchone()        
-        
+
         if not fetch_result is None:
             isTor = int(fetch_result.isTor)
             totalReports = int(fetch_result.totalReports)
@@ -525,14 +531,14 @@ class Base:
                 return None
             elif ip_address == self.default_ipv4:
                 return None
-            
+
             api_url    = self.abuseipdb_config[api_name]['url']
             api_key         = self.abuseipdb_config[api_name]['api_key']
             
             if api_url == '' or api_key == '':
                 self.log_print('AbuseIPDB - API Key or API ENDPOINT Error : empty','red')
                 return None
-            
+
             # Create category section
             category_ = ''
             count = 0
@@ -563,7 +569,7 @@ class Base:
                 'Key': api_key
             }
 
-            with requests.request(method='POST', url=url, headers=headers, params=params, timeout=2) as response:
+            with requests.request(method='POST', url=url, headers=headers, params=params, timeout=self.abuseipdb_timeout) as response:
 
                 req = json.loads(response.text)
                 if 'errors' in req:
@@ -590,4 +596,3 @@ class Base:
             self.log_print(f'API Error Timeout : {timeout}','red')
         except requests.ConnectionError as ConnexionError:
             self.log_print(f'API Connection Error : {ConnexionError}','red')
-        
