@@ -15,7 +15,7 @@
             "active": true,
             "report": true,
             "url": "http://interceptor.deb.biz.st:9999/declar/",
-            "api_key": "",
+            "api_key": "s",
             "jail_score": 95,
             "jail_duration": 600
         }
