@@ -4,6 +4,7 @@ from datetime import datetime, timedelta
 from sqlalchemy import create_engine, Engine, Connection, CursorResult
 from sqlalchemy.sql import text
 from platform import python_version
+from typing import Union
 
 class Base:
 
@@ -414,7 +415,7 @@ class Base:
 
         return response
 
-    def check_endpoint_abuseipdb(self, parsed_api:dict, ip_to_check:str) -> dict | None:
+    def check_endpoint_abuseipdb(self, parsed_api:dict, ip_to_check:str) -> Union[dict, None]:
 
         api_name = 'abuseipdb'
 
