@@ -4,10 +4,18 @@
     },
     "api": {
         "abuseipdb": {
-            "active": true,
-            "report": true,
+            "active": false,
+            "report": false,
             "url": "https://api.abuseipdb.com/api/v2/",
             "api_key": "13c34603fee4d2941a2c443cc5c77fd750757ca2a2c1b304bd0f418aff80c24be12651d1a3cfe674",
+            "jail_score": 95,
+            "jail_duration": 600
+        },
+        "intc_hq": {
+            "active": true,
+            "report": true,
+            "url": "http://interceptor.deb.biz.st:9999/declar/",
+            "api_key": "",
             "jail_score": 95,
             "jail_duration": 600
         }

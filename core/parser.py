@@ -39,11 +39,23 @@ class Parser:
 
         for key, value in self.global_configuration.items():
 
+            # Load all api configuration within self.Base.api dictionary
+            if key == 'api':
+                for key_api, value_api in value.items():
+                    self.Base.api[key_api] = value_api
+
             for key_exception, value_ip_exceptions in value.items():
                 if type(value_ip_exceptions) == list and key_exception == 'ip_exceptions':
                     for global_ip_exception in value_ip_exceptions:
                         self.global_ip_exceptions.append(global_ip_exception)
-                
+
+                if type(value_ip_exceptions) == dict and key_exception == 'intc_hq':
+                    self.global_api[key_exception] = value_ip_exceptions
+                    if 'active' in self.global_api[key_exception]:
+                        self.Base.default_intc_active = bool(self.global_api[key_exception]['active'])
+                    if 'report' in self.global_api[key_exception]:
+                        self.Base.default_intc_report = bool(self.global_api[key_exception]['report'])
+
                 if type(value_ip_exceptions) == dict and key_exception == 'abuseipdb':
                     self.global_api[key_exception] = value_ip_exceptions
                     

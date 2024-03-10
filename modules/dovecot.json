@@ -15,7 +15,7 @@
     },
     
     "ip_exceptions": ["192.168.1.11","192.168.1.12"],
-    
+
     "actions": {
         "attempt": 4,
         "jail_duration": 30

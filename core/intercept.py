@@ -82,7 +82,11 @@ class Intercept:
                                             if self.Base.ip_tables_add(mod_name, ip, self.Base.abuseipdb_jail_duration) > 0:
                                                 self.Base.log_print(f'{mod_name} - AbuseIPDB - "{ip}" - Moving to jail for {str(self.Base.abuseipdb_jail_duration)} seconds | Tor: {str(isTor)} / Reports: {str(totalReports)} / Score: {str(score)}', 'red')
                                             self.Base.clean_iptables()
+                                        else:
+                                            self.Base.report_to_HQ(self.Base.get_sdatetime(), output, ip, service_id)
+                                            self.execute_action(ip, mod_name)
                                     else:
+                                        self.Base.report_to_HQ(self.Base.get_sdatetime(), output, ip, service_id)
                                         self.execute_action(ip, mod_name)
        
         return None

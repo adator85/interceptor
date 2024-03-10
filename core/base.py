@@ -16,7 +16,7 @@ class Base:
 
     def __init__(self) -> None:
 
-        self.VERSION                = '1.6.3'                                   # MAJOR.MINOR.BATCH
+        self.VERSION                = '2.0.0'                                   # MAJOR.MINOR.BATCH
         self.CURRENT_PYTHON_VERSION = python_version()                          # Current python version
         self.HOSTNAME               = socket.gethostname()                      # Hostname of the local machine
         self.IPV4                   = socket.gethostbyname(self.HOSTNAME)       # Local ipv4 of the local machine
@@ -25,6 +25,12 @@ class Base:
         self.default_attempt        = 4                                         # Default attempt before jail
         self.default_jail_duration  = 120                                       # Default Duration in seconds before the release
         self.default_ipv4           = '0.0.0.0'                                 # Default ipv4 to be used by Interceptor
+
+        self.api:dict               = {}                                        # Available API's configuration from global.json
+
+        self.default_intc_active    = False                                     # Use head quarter information
+        self.default_intc_report    = False                                     # Report to the HQ intrusions
+        self.default_intc_timeout   = 5                                         # HQ Timeout
 
         self.abuseipdb_config:dict          = {}                                # AbuseIPDB Configuration
         self.abuseipdb_status:bool          = False                             # Default abuseipdb status
@@ -117,7 +123,7 @@ class Base:
             self.cursor.commit()
 
             return response
-    
+
     def __db_create_tables(self) -> None:
 
         table_logs = f'''CREATE TABLE IF NOT EXISTS logs (
@@ -210,7 +216,7 @@ class Base:
 
         r = self.db_execute_query(query, mes_donnees)
         return r.rowcount
-    
+
     def db_record_iptables_logs(self, module_name:str, ip:str, duration:int) -> None:
 
         query = '''INSERT INTO iptables_logs (datetime, module_name, ip, duration) 
@@ -388,7 +394,7 @@ class Base:
         system_command = '/sbin/iptables -F'
         os.system(system_command)
         return None
-    
+
     def ip_tables_isExist(self, ip:str) -> bool:
         """Vérifie si une ip existe dans iptables
 
@@ -407,7 +413,7 @@ class Base:
             response = True
 
         return response
-    
+
     def check_endpoint_abuseipdb(self, parsed_api:dict, ip_to_check:str) -> dict | None:
 
         api_name = 'abuseipdb'
@@ -517,8 +523,8 @@ class Base:
                 return None
             elif ip_address == self.default_ipv4:
                 return None
-            
-            api_url    = self.abuseipdb_config[api_name]['url']
+
+            api_url         = self.abuseipdb_config[api_name]['url']
             api_key         = self.abuseipdb_config[api_name]['api_key']
             
             if api_url == '' or api_key == '':
@@ -582,4 +588,58 @@ class Base:
             self.log_print(f'API Error Timeout : {timeout}','red')
         except requests.ConnectionError as ConnexionError:
             self.log_print(f'API Connection Error : {ConnexionError}','red')
-        
+
+    def report_to_HQ(self, intrusion_datetime:str, intrusion_detail:str, ip_address:str, intrusion_service_id:str) -> None:
+
+        try:
+            api_name        = 'intc_hq'
+
+            if not api_name in self.api:
+                return None
+            elif not self.api[api_name]['active']:
+                return None
+            elif not self.api[api_name]['report']:
+                return None
+            elif ip_address == self.default_ipv4:
+                return None
+
+            url = self.api[api_name]['url'] if 'url' in self.api[api_name] else None
+            if url is None:
+                return None
+
+            querystring = {
+                'intrusion_datetime': intrusion_datetime,
+                'intrusion_detail': intrusion_detail,
+                'intrusion_service_id': str(intrusion_service_id),
+                'ip_address': ip_address,
+                'reported_hostname': self.HOSTNAME
+            }
+
+            headers = {
+                'Accept': 'application/json',
+                'Content-Type': 'application/json',
+                'user-agent': 'Interceptor Client',
+                'Key': 'api_key'
+            }
+
+            response = requests.request(method='POST', url=url, headers=headers, timeout=self.default_intc_timeout, json=querystring)
+
+            # Formatted output
+            req = json.loads(response.text)
+
+            if 'code' in req:
+                if req['code'] == 200:
+                    self.log_print(f"INTC_HQ REPORTED - {ip_address} --> {str(req['code'])} {req['message']}", "green")
+                elif req['code'] == 400:
+                    self.log_print(f"INTC_HQ REPORTED - {ip_address} --> {str(req['code'])} {req['message']}", "red")
+
+            return None
+
+        except KeyError as ke:
+            self.log_print(f'API Error KeyError : {ke}','red')
+        except requests.ReadTimeout as timeout:
+            self.log_print(f'API Error Timeout : {timeout}','red')
+        except requests.ConnectionError as ConnexionError:
+            self.log_print(f'API Connection Error : {ConnexionError}','red')
+
+        return None

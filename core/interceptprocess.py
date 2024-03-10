@@ -4,7 +4,7 @@ from core import parser, base, intercept
 
 class InterceptProcess:
 
-    def __init__(self, parser:parser.Parser, base:base.Base) -> None:
+    def __init__(self, base:base.Base, parser:parser.Parser) -> None:
         # Initialiser les processus
 
         self.subprocess:list[Popen[bytes]] = []
