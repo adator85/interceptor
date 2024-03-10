@@ -12,14 +12,21 @@ class Cron:
         return None
 
     def init(self) -> None:
-        
+
+        intc_hq_status = self.Base.api['intc_hq']['active'] if 'intc_hq' in self.Base.api else False
+        intc_hq_report = self.Base.api['intc_hq']['report'] if 'intc_hq' in self.Base.api else False
+
         # Initialiser heartbeat
         self.Base.create_thread(self.Base.heartbeat, (self.Base.PULSE, ))
         self.Base.create_thread(self.cron, (self.Base.clean_db_logs, 60 * 60))
 
+        if intc_hq_status and intc_hq_report:
+            # Activate thread reporting to HQ
+            pass 
+
         if self.Base.abuseipdb_status:
             self.Base.create_thread(self.cron, (self.init_abuseipdb, 120))
-        
+
         if self.Base.abuseipdb_report and self.Base.abuseipdb_status:
             self.Base.create_thread(self.cron, (self.report_to_abuseipdb, 600))
 
@@ -120,3 +127,9 @@ class Cron:
             self.Base.log_print(f'AbuseIPDB - CRON - end of the "{self.report_to_abuseipdb.__name__}" job!','yellow')
 
         pass
+
+    def report_to_HQ_thread(self) -> None:
+
+        query_log = 'SELECT id, datetime, service_id, ip FROM logs'
+
+        return None
