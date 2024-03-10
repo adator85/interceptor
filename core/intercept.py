@@ -1,6 +1,7 @@
 import re
 from core import base, parser
 from subprocess import Popen
+from typing import Union
 
 class Intercept:
 
@@ -162,8 +163,8 @@ class Intercept:
             service_id = f'{service_id}_{unixtime}'
 
         return service_id
-    
-    def get_ipv4_address(self, output:str, mod_name:str) -> str | None:
+
+    def get_ipv4_address(self, output:str, mod_name:str) -> Union[str, None]:
         """Retourn l'adresse ip si disponible
 
         Args:
@@ -189,8 +190,8 @@ class Intercept:
             ip_address = list_search[0]
 
         return ip_address
-    
-    def get_ipv6_address(self, output:str, mod_name:str) -> str | None:
+
+    def get_ipv6_address(self, output:str, mod_name:str) -> Union[str, None]:
         """Retourn l'adresse ip si disponible
 
         Args:
@@ -215,8 +216,8 @@ class Intercept:
             ip_address = list_search[0]
 
         return ip_address
-    
-    def get_users_attempt(self, output:str, mod_name:str) -> str | None:
+
+    def get_users_attempt(self, output:str, mod_name:str) -> Union[str, None]:
         """Retourn le user si disponible
 
         Args:

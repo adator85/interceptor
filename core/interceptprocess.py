@@ -1,4 +1,5 @@
 from subprocess import Popen, PIPE
+from typing import Union
 import os
 from core import parser, base, intercept
 
@@ -8,21 +9,14 @@ class InterceptProcess:
         # Initialiser les processus
 
         self.subprocess:list[Popen[bytes]] = []
-        self.subprocess_detail:dict = {}        
-        '''
-        {
-            'module_1': 'journalctl',
-            'module_2': 'journalctl',
-            'module_3': '/var/log/proftpd/proftpd.log'
-        }
-        '''
+        self.subprocess_detail:dict = {}
 
         self.Parser = parser
         self.Base = base
 
         self.init_processes()
         self.create_threads_for_processes()
-       
+
         return None
 
     def init_processes(self) -> None:
@@ -49,7 +43,7 @@ class InterceptProcess:
         
         return None
 
-    def _create_subprocess(self, logs_source:str=None) -> Popen[bytes] | None:
+    def _create_subprocess(self, logs_source:str=None) -> Union[Popen[bytes], None]:
 
         if logs_source is None:
             process = Popen(['journalctl', '-f'], stdout=PIPE, stderr=PIPE)
@@ -74,7 +68,7 @@ class InterceptProcess:
             self.Base.create_thread(self._run_subprocess, (subprocess, ))
 
         return None
-    
+
     def _run_subprocess(self, subprocess:Popen[bytes]) -> None:
         
         Intercept = intercept.Intercept(self.Base, self.Parser, subprocess, self.subprocess_detail)
@@ -85,4 +79,3 @@ class InterceptProcess:
                 Intercept.run_process(output)
                 if self.Base.DEBUG:
                     print(output)
-    

@@ -1,4 +1,4 @@
-from subprocess import run, PIPE, Popen
+from subprocess import run, PIPE
 import os, threading, time, socket, json, requests
 from datetime import datetime, timedelta
 from sqlalchemy import create_engine, Engine, Connection, CursorResult
@@ -7,7 +7,7 @@ from platform import python_version
 
 class Base:
 
-    __COLORS = {'white': '\033[97m', 
+    __COLORS:dict = {'white': '\033[97m', 
                 'green': '\033[92m', 
                 'red': '\033[91m',
                 'yellow': '\033[93m',
@@ -110,7 +110,7 @@ class Base:
         cursor = engine.connect()
 
         return engine, cursor
-    
+
     def db_execute_query(self, query:str, params:dict = {}) -> CursorResult:
 
         with self.lock:
@@ -323,7 +323,7 @@ class Base:
         return no_files
 
     def clean_iptables(self) -> None:
-        
+
         # Récuperer la date de la base de donnée
         # Convertir la date
         # Ajouter la duration
@@ -349,11 +349,11 @@ class Base:
     def clean_db_logs(self) -> None:
         """Clean logs that they have more than 24 hours
         """
-        
+
         query = "DELETE FROM logs WHERE ip = :ip"
         mes_donnees = {'ip': self.default_ipv4}
         default_ip_request = self.db_execute_query(query,mes_donnees)
-        
+
         query = '''DELETE FROM logs WHERE datetime <= :datetime'''
         mes_donnees = {'datetime':self.minus_one_hour(24)}
         r_datetime = self.db_execute_query(query, mes_donnees)
@@ -376,7 +376,7 @@ class Base:
 
         if self.ip_tables_isExist(ip):
             return 0
-        
+
         system_command = '/sbin/iptables -A INPUT -s {} -j REJECT'.format(ip)
         os.system(system_command)
         rowcount = self.db_record_iptables(module_name, ip, duration_seconds)
