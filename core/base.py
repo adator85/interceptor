@@ -633,10 +633,8 @@ class Base:
             if 'code' in req:
                 if req['code'] == 200:
                     self.log_print(f"INTC_HQ REPORTED - {ip_address} --> {str(req['code'])} {req['message']}", "green")
-                elif req['code'] == 400:
-                    self.log_print(f"INTC_HQ REPORTED - {ip_address} --> {str(req['code'])} {req['message']}", "red")
                 else:
-                    self.log_print(f"INTC_HQ RESPONSE - {str(req['code'])} {req['message']}", "red")
+                    self.log_print(f"INTC_HQ RESPONSE - {ip_address} - {str(req['code'])} {req['message']}", "red")
 
             return None
 
@@ -645,6 +643,7 @@ class Base:
         except requests.ReadTimeout as timeout:
             self.log_print(f'API Error Timeout : {timeout}','red')
         except requests.ConnectionError as ConnexionError:
-            self.log_print(f'API Connection Error : {ConnexionError}','red')
+            if self.DEBUG:
+                self.log_print(f'API Connection Error : {ConnexionError}','red')
 
         return None
