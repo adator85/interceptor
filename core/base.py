@@ -590,6 +590,58 @@ class Base:
         except requests.ConnectionError as ConnexionError:
             self.log_print(f'API Connection Error : {ConnexionError}','red')
 
+    def get_information_from_HQ(self, ip_address: str) -> Union[dict, None]:
+
+        try:
+            api_name        = 'intc_hq'
+
+            if not api_name in self.api:
+                return None
+            elif not self.api[api_name]['active']:
+                return None
+            elif not self.api[api_name]['report']:
+                return None
+            elif ip_address == self.default_ipv4:
+                return None
+
+            url = f"{self.api[api_name]['url']}check/" if 'url' in self.api[api_name] else None
+            api_key = self.api[api_name]['api_key'] if 'api_key' in self.api[api_name] else None
+
+            if url is None:
+                return None
+
+            url = url + ip_address
+
+            headers = {
+                'Accept': 'application/json',
+                'Content-Type': 'application/json',
+                'user-agent': 'Interceptor Client',
+                'Key': api_key
+            }
+
+            response = requests.request(method='GET', url=url, headers=headers, timeout=self.default_intc_timeout)
+
+            # Formatted output
+            req = json.loads(response.text)
+
+            if 'code' in req:
+                if not req['error']:
+                    self.log_print(f"INTC_HQ RECEIVE INFORMATION - {ip_address} --> {str(req['code'])} {req['message']}", "green")
+                else:
+                    self.log_print(f"INTC_HQ RECEIVE INFORMATION - {ip_address} --> {str(req['code'])} {req['message']}", "red")
+
+            return req
+
+        except KeyError as ke:
+            self.log_print(f'API Error KeyError : {ke}','red')
+        except requests.ReadTimeout as timeout:
+            self.log_print(f'API Error Timeout : {timeout}','red')
+        except requests.ConnectionError as ConnexionError:
+            if self.DEBUG:
+                self.log_print(f'API Connection Error : {ConnexionError}','red')
+
+        return None
+
     def report_to_HQ(self, intrusion_datetime:str, intrusion_detail:str, ip_address:str, intrusion_service_id:str) -> None:
 
         try:
@@ -604,7 +656,7 @@ class Base:
             elif ip_address == self.default_ipv4:
                 return None
 
-            url = self.api[api_name]['url'] if 'url' in self.api[api_name] else None
+            url = f"{self.api[api_name]['url']}report/" if 'url' in self.api[api_name] else None
             api_key = self.api[api_name]['api_key'] if 'api_key' in self.api[api_name] else None
 
             if url is None:

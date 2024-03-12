@@ -67,12 +67,18 @@ class Intercept:
                             # Si l'ip est dans liste d'exception globale
                             if ip in self.Parser.global_ip_exceptions:
                                 self.Base.log_print(f'Global exception - [{ip}] was exempted from the analysis ...', 'red')
-                            
+
                             # Si l'ip est dans la liste de l'exception du module
                             elif ip in ip_exceptions:
                                 self.Base.log_print(f'Module "{mod_name}" exception - [{ip}] was exempted from the analysis ...', 'red')
-                            
+
                             else:
+                                # Report to HQ
+                                self.Base.report_to_HQ(self.Base.get_sdatetime(), output, ip, service_id)
+
+                                # Get ip information from the HQ
+                                self.Base.get_information_from_HQ(ip)
+
                                 if self.Base.db_record_ip(service_id, mod_name, ip, filter_name, user) > 0:
                                     self.Base.log_print(f'{mod_name} - {filter_name} - {service_id} - {ip} - {user} - recorded', 'white')
                                     
@@ -84,10 +90,8 @@ class Intercept:
                                                 self.Base.log_print(f'{mod_name} - AbuseIPDB - "{ip}" - Moving to jail for {str(self.Base.abuseipdb_jail_duration)} seconds | Tor: {str(isTor)} / Reports: {str(totalReports)} / Score: {str(score)}', 'red')
                                             self.Base.clean_iptables()
                                         else:
-                                            self.Base.report_to_HQ(self.Base.get_sdatetime(), output, ip, service_id)
                                             self.execute_action(ip, mod_name)
                                     else:
-                                        self.Base.report_to_HQ(self.Base.get_sdatetime(), output, ip, service_id)
                                         self.execute_action(ip, mod_name)
        
         return None

@@ -14,7 +14,7 @@
         "intc_hq": {
             "active": true,
             "report": true,
-            "url": "http://interceptor.deb.biz.st:8585/report/",
+            "url": "http://interceptor.deb.biz.st:8585/",
             "api_key": "psOSoVA7DJmk5aCLYYVGIEp0VcSj3RRUpJoBGbVfxSPuS8EW9HVZBEIYVWgVdzOE",
             "jail_score": 95,
             "jail_duration": 600
