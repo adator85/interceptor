@@ -605,6 +605,8 @@ class Base:
                 return None
 
             url = self.api[api_name]['url'] if 'url' in self.api[api_name] else None
+            api_key = self.api[api_name]['api_key'] if 'api_key' in self.api[api_name] else None
+
             if url is None:
                 return None
 
@@ -620,7 +622,7 @@ class Base:
                 'Accept': 'application/json',
                 'Content-Type': 'application/json',
                 'user-agent': 'Interceptor Client',
-                'Key': 'api_key'
+                'Key': api_key
             }
 
             response = requests.request(method='POST', url=url, headers=headers, timeout=self.default_intc_timeout, json=querystring)
@@ -633,6 +635,8 @@ class Base:
                     self.log_print(f"INTC_HQ REPORTED - {ip_address} --> {str(req['code'])} {req['message']}", "green")
                 elif req['code'] == 400:
                     self.log_print(f"INTC_HQ REPORTED - {ip_address} --> {str(req['code'])} {req['message']}", "red")
+                else:
+                    self.log_print(f"INTC_HQ RESPONSE - {str(req['code'])} {req['message']}", "red")
 
             return None
 

@@ -14,8 +14,8 @@
         "intc_hq": {
             "active": true,
             "report": true,
-            "url": "http://interceptor.deb.biz.st:9999/declar/",
-            "api_key": "s",
+            "url": "http://127.0.0.1:9999/declar/",
+            "api_key": "psOSoVA7DJmk5aCLYYVGIEp0VcSj3RRUpJoBGbVfxSPuS8EW9HVZBEIYVWgVdzOE",
             "jail_score": 95,
             "jail_duration": 600
         }
