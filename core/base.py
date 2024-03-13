@@ -19,6 +19,7 @@ class Base:
 
         self.VERSION                = '2.0.0'                                   # MAJOR.MINOR.BATCH
         self.CURRENT_PYTHON_VERSION = python_version()                          # Current python version
+        self.DATE_FORMAT            = '%Y-%m-%d %H:%M:%S'                       # The date format
         self.HOSTNAME               = socket.gethostname()                      # Hostname of the local machine
         self.IPV4                   = socket.gethostbyname(self.HOSTNAME)       # Local ipv4 of the local machine
         self.PULSE                  = 5                                         # Pulse in seconds
@@ -66,7 +67,7 @@ class Base:
         """
         Retourne une date au format string (24-12-2023 20:50:59)
         """
-        currentdate = datetime.now().strftime('%d-%m-%Y %H:%M:%S')
+        currentdate = datetime.now().strftime(self.DATE_FORMAT)
         return currentdate
 
     def convert_to_datetime(self, datetime_text:str) -> datetime:
@@ -78,9 +79,7 @@ class Base:
         Returns:
             datetime: datetime object
         """
-        format = '%d-%m-%Y %H:%M:%S'
-
-        conveted_datetime = datetime.strptime(datetime_text, format)
+        conveted_datetime = datetime.strptime(datetime_text, self.DATE_FORMAT)
 
         return conveted_datetime
 
@@ -90,7 +89,7 @@ class Base:
         current_datetime = datetime.now()
         result_datetime = current_datetime - timedelta(hours=hours)
 
-        result_datetime = result_datetime.strftime('%d-%m-%Y %H:%M:%S')
+        result_datetime = result_datetime.strftime(self.DATE_FORMAT)
 
         return result_datetime
 
