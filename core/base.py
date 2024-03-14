@@ -7,6 +7,15 @@ from platform import python_version
 from typing import Union
 
 class Base:
+    '''### Class contain all the basic methods
+    - Global Interceptor default variables
+    - All datetime methods needed by Interceptor
+    - database connections
+    - Thread creation methods
+    - database cleaning methods
+    - iptables cleaning methods
+    - Abuseipdb interactions methods
+    '''
 
     __COLORS:dict = {'white': '\033[97m', 
                 'green': '\033[92m', 
@@ -691,6 +700,8 @@ class Base:
 
         except KeyError as ke:
             self.log_print(f'API Error KeyError : {ke}','red')
+        except TypeError as te:
+            self.log_print(f'API Error TypeError : {ke}','red')
         except requests.ReadTimeout as timeout:
             self.log_print(f'API Error Timeout : {timeout}','red')
         except requests.ConnectionError as ConnexionError:
