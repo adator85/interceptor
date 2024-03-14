@@ -642,11 +642,17 @@ class Base:
 
         except KeyError as ke:
             self.log_print(f'API Error KeyError : {ke}','red')
+            return None
+        except TypeError as te:
+            self.log_print(f'API Error TypeError : {te}','red')
+            return None
         except requests.ReadTimeout as timeout:
             self.log_print(f'API Error Timeout : {timeout}','red')
+            return None
         except requests.ConnectionError as ConnexionError:
             if self.DEBUG:
                 self.log_print(f'API Connection Error : {ConnexionError}','red')
+            return None
 
         return None
 

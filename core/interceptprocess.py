@@ -46,7 +46,7 @@ class InterceptProcess:
     def _create_subprocess(self, logs_source:str=None) -> Union[Popen[bytes], None]:
 
         if logs_source is None:
-            process = Popen(['journalctl', '-f'], stdout=PIPE, stderr=PIPE)
+            process = Popen(['journalctl', '-f', '-n', '0'], stdout=PIPE, stderr=PIPE)
             self.subprocess.append(process)
             return process
         
