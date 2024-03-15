@@ -77,7 +77,8 @@ class Intercept:
                                 self.Base.report_to_HQ(self.Base.get_sdatetime(), output, ip, service_id)
 
                                 # Get ip information from the HQ
-                                self.Base.get_information_from_HQ(ip)
+                                res = self.Base.get_information_from_HQ(ip)
+                                print(res)
 
                                 if self.Base.db_record_ip(service_id, mod_name, ip, filter_name, user) > 0:
                                     self.Base.log_print(f'{mod_name} - {filter_name} - {service_id} - {ip} - {user} - recorded', 'white')

@@ -49,14 +49,13 @@ class Base:
         self.abuseipdb_jail_score:int       = 100                               # Default score for the jail if not set in the configuration
         self.abuseipdb_jail_duration:int    = 600                               # Default duration for abusedbip if not set
 
-
         self.lock = threading.RLock()                                           # Define RLock for multithreading
         self.hb_active:bool = True                                              # Define heartbeat variable
         self.running_threads:list[threading.Thread] = []                        # Define running_threads variable
 
         self.logs_init()                                                        # Init logs directory and log file.
         self.engine, self.cursor = self.db_init()                               # Init Engine & Cursor
-        self.__db_create_tables()                                               # Create tables        
+        self.__db_create_tables()                                               # Create tables
 
         return None
 
