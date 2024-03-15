@@ -61,9 +61,10 @@ class Base:
         return None
 
     def get_unixtime(self)->int:
-        """
-        Cette fonction retourne un UNIXTIME de type 12365456
-        Return: Current time in seconds since the Epoch (int)
+        """Get Unixtime in int format
+
+        Returns:
+            int: Current time in seconds
         """
         unixtime = int( time.time() )
         return unixtime
@@ -73,8 +74,10 @@ class Base:
         return datetime.now()
 
     def get_sdatetime(self) -> str:
-        """
-        Retourne une date au format string (24-12-2023 20:50:59)
+        """Get datetime in string format defined by self.DATE_FORMAT
+
+        Returns:
+            str: date in string format
         """
         currentdate = datetime.now().strftime(self.DATE_FORMAT)
         return currentdate
@@ -109,12 +112,17 @@ class Base:
         return result
 
     def db_init(self) -> tuple[Engine, Connection]:
+        """Initiat DB Connexion
+
+        Returns:
+            tuple[Engine, Connection]: tuple with Engine and Connection objects
+        """
         db_directory = f'db{os.sep}'
         db_full_path = f'{db_directory}software.db'
 
         if not os.path.exists(f'{db_directory}'):
             os.makedirs(db_directory)
-        
+
         engine = create_engine(f'sqlite:///{db_full_path}', echo=False)
         cursor = engine.connect()
 
@@ -261,7 +269,7 @@ class Base:
             os.makedirs(logs_directory)
             with open(logs_full_path, 'a+') as log:
                 log.write(f'{self.get_sdatetime()} - Interceptor Init logs\n')
-        
+
         return None
 
     def log_print(self, string:str, color:str = None) -> None:
@@ -276,18 +284,18 @@ class Base:
 
         if color is None:
             print(f'{self.get_sdatetime()}: {string}')
-        
+
         for key_color, value_color in self.__COLORS.items():
             if key_color == color:
                 print(f'{value_color}{self.get_sdatetime()}: {string}{reset}')
                 isExist_color = True
-        
+
         if not isExist_color:
             print(f'{self.get_sdatetime()}: {string}')
 
         logs_directory = f'logs{os.sep}'
         logs_full_path = f'{logs_directory}intercept.log'
-        
+
         with open(logs_full_path, 'a+') as log:
             log.write(f'{self.get_sdatetime()}: {string}\n')
             log.close()
@@ -315,7 +323,7 @@ class Base:
         while self.hb_active:
             time.sleep(beat)
             self.clean_iptables()
-        
+
         return None
 
     def get_no_filters_files(self) -> int:
@@ -341,7 +349,7 @@ class Base:
         query = f'''SELECT ip, datetime, duration, module_name 
                     FROM iptables
                 '''
-        
+
         cursorResult = self.db_execute_query(query)
         r = cursorResult.fetchall()
 
@@ -355,10 +363,10 @@ class Base:
                 self.ip_tables_remove(db_ip)
                 self.log_print(f'{db_module_name} - "{db_ip}" - released from jail', 'green')
 
-    def clean_db_logs(self) -> None:
+    def clean_db_logs(self) -> bool:
         """Clean logs that they have more than 24 hours
         """
-
+        response = False
         query = "DELETE FROM logs WHERE ip = :ip"
         mes_donnees = {'ip': self.default_ipv4}
         default_ip_request = self.db_execute_query(query,mes_donnees)
@@ -378,8 +386,9 @@ class Base:
 
         if affected > 0:
             self.log_print(f'clean_db_logs - Deleted : Logs {str(affected_rows)} - AbuseIPDB {str(affected_rows_abuseipdb)} - Default ip {affected_rows_default_ipv4}','green')
+            response = True
 
-        return None
+        return response
 
     def ip_tables_add(self, module_name:str, ip:str, duration_seconds:int) -> int:
 
@@ -413,7 +422,7 @@ class Base:
         Returns:
             bool: True si l'ip existe déja
         """
-        
+
         # check_rule = run(['/sbin/iptables','-C','INPUT','-s',ip,'-j','REJECT'],stdout=subprocess.PIPE, stderr=subprocess.PIPE).returncode == 0
         check_rule = run(['/sbin/iptables','-C','INPUT','-s',ip,'-j','REJECT'],stdout=PIPE, stderr=PIPE).returncode == 0
         response = False
@@ -500,12 +509,12 @@ class Base:
         res_sql = self.db_execute_query(query, mes_donnees)
 
         fetch_result = res_sql.fetchone()        
-        
+
         if not fetch_result is None:
             isTor = int(fetch_result.isTor)
             totalReports = int(fetch_result.totalReports)
             score = int(fetch_result.score)
-            
+
             response = (isTor, totalReports, score)       
 
         return response
@@ -535,11 +544,11 @@ class Base:
 
             api_url         = self.abuseipdb_config[api_name]['url']
             api_key         = self.abuseipdb_config[api_name]['api_key']
-            
+
             if api_url == '' or api_key == '':
                 self.log_print('AbuseIPDB - API Key or API ENDPOINT Error : empty','red')
                 return None
-            
+
             # Create category section
             category_ = ''
             count = 0

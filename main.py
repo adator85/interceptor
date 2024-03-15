@@ -15,7 +15,7 @@ def main():
     CronInstance.init()                                             # Start cron jobs
     IProcInstance = InterceptProcess(BaseInstance, ParserInstance)  # Start SubProcesses
 
-    try:    
+    try:
 
         while BaseInstance.hb_active:
             time.sleep(5)
@@ -23,7 +23,7 @@ def main():
     finally:
         for subprocess in IProcInstance.subprocess:
             print(f'Terminate subprocess {subprocess}')
-            subprocess.terminate()  
+            subprocess.terminate()
 
 if __name__ == "__main__":
     main()

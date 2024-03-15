@@ -35,12 +35,12 @@ class InterceptProcess:
                 # Run subprocess with journalctl -f
                 isJournalctl = True
                 module_names_with_single_subprocess.append(mod_name)
-        
+
         if isJournalctl:
             subprocess = self._create_subprocess()
             for mod_name_ssprocess in module_names_with_single_subprocess:
                 self.subprocess_detail[mod_name_ssprocess] = subprocess
-        
+
         return None
 
     def _create_subprocess(self, logs_source:str=None) -> Union[Popen[bytes], None]:
@@ -49,7 +49,7 @@ class InterceptProcess:
             process = Popen(['journalctl', '-f', '-n', '0'], stdout=PIPE, stderr=PIPE)
             self.subprocess.append(process)
             return process
-        
+
         if not os.path.exists(logs_source):
             self.Base.log_print(f'{self._create_subprocess.__name__} - {logs_source} - no such directory or file','red')
             return None
@@ -70,9 +70,9 @@ class InterceptProcess:
         return None
 
     def _run_subprocess(self, subprocess:Popen[bytes]) -> None:
-        
+
         Intercept = intercept.Intercept(self.Base, self.Parser, subprocess, self.subprocess_detail)
-        
+
         while True:
             output = subprocess.stdout.readline().decode('utf-8').strip()
             if output:

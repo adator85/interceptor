@@ -32,7 +32,7 @@ class Intercept:
                     self.record_entry(output, mod_name)
 
         return None
-    
+
     def record_entry(self, output:str, mod_name:str) -> None:
 
         ip = ''
@@ -93,7 +93,7 @@ class Intercept:
                                             self.execute_action(ip, mod_name)
                                     else:
                                         self.execute_action(ip, mod_name)
-       
+
         return None
 
     def execute_action(self, received_ip:str, mod_name:str) -> None:
@@ -155,7 +155,7 @@ class Intercept:
             if self.Parser.modules[mod_name]['inc_service_id']:
                 unixtime = str(self.Base.get_unixtime())
                 inc_service_id = True
-            
+
         #for mod_name in self.Parser.module_names:
         pattern_service_id = self.Parser.modules[mod_name]['rgx_service_id']
         lookup_service_id = re.search(pattern_service_id, output)
@@ -187,7 +187,7 @@ class Intercept:
                         list_search = list(lookup_ip.groups())
                         ip_address = list_search[0]
                         return ip_address
-        
+
         lookup_ip_address = re.search(self.__PATTERN_IPV4, output)
         if lookup_ip_address:
             list_search = list(lookup_ip_address.groups())
@@ -213,7 +213,7 @@ class Intercept:
                         list_search = list(lookup_ip.groups())
                         ip_address = list_search[0]
                         return ip_address
-        
+
         lookup_ip_address = re.search(self.__PATTERN_IPV6, output)
         if lookup_ip_address:
             list_search = list(lookup_ip_address.groups())
@@ -237,7 +237,7 @@ class Intercept:
             r'^.*Failed password for invalid user (\D*?)\s.*$',
             r'^.*Failed password for (\D*?)\s.*$'
         ]
-        
+
         if self.subprocess_detail[mod_name] == self.subprocess:
             if 'rgx_username' in self.Parser.modules[mod_name]:
                 pattern = self.Parser.modules[mod_name]['rgx_username']
@@ -252,5 +252,5 @@ class Intercept:
             if lookup_user:
                 list_search = list(lookup_user.groups())
                 user = list_search[0]
-        
+
         return user

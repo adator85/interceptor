@@ -15,7 +15,7 @@ class Parser:
         self.module_names:list = []                     # List of module names () ==> ["sshd","dovecot","proftpd"]
         self.filenames:list = []                        # Liste contenant le nom des fichiers de configuration json
         self.errors:list = []                           # check errors
-        
+
         self.load_global_json_configuration()
         self.load_json_configuration()
         self.parse_json()
@@ -58,7 +58,7 @@ class Parser:
 
                 if type(value_ip_exceptions) == dict and key_exception == 'abuseipdb':
                     self.global_api[key_exception] = value_ip_exceptions
-                    
+
                     # Send information to Base Instance
                     self.Base.abuseipdb_config[key_exception] = value_ip_exceptions
                     if 'active' in self.global_api[key_exception]:

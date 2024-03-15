@@ -66,13 +66,13 @@ class Cron:
 
                 # wait for 2 minutes before sending a new ip for verification
                 time.sleep(20)
-        
+
         if self.Base.DEBUG:
             self.Base.log_print(f'AbuseIPDB - CRON - end of the "{self.init_abuseipdb.__name__}" job!','yellow')
 
     def report_to_abuseipdb(self):
 
-        query_fetch_ip = '''SELECT MAX(id) as id, ip, module_name, max(datetime) as reported_datetime, service_id FROM logs                                 
+        query_fetch_ip = '''SELECT MAX(id) as id, ip, module_name, max(datetime) as reported_datetime, service_id FROM logs
                                 GROUP BY module_name, ip, service_id
                                 ORDER BY id
                                 '''
@@ -81,22 +81,22 @@ class Cron:
         query_check_ip = '''SELECT id FROM reported_abuseipdb WHERE reported_datetime = :datetime and ip = :ip'''
 
         query_check_reported_date = '''SELECT MAX(datetime) as latest_reported_datetime FROM reported_abuseipdb WHERE ip = :ip GROUP BY ip'''
-        
+
         categories = {'sshd': [22, 18]}
         category:list = []
 
         for infos in fetch_result.fetchall():
             db_id, db_ip, db_module_name, db_reported_datetime, db_service_id = infos
-            
+
             # Get keyword attack
             get_keyword_query = 'SELECT keyword FROM logs WHERE id = :id'
             get_keyword_cursor = self.Base.db_execute_query(get_keyword_query, {'id': db_id})
             keyword = get_keyword_cursor.fetchone()
-            
+
             _15_minutes_minus = self.Base.convert_to_datetime(self.Base.minus_one_hour(0.30))
             mes_donnees_check_ip = {'datetime': db_reported_datetime, 'ip': db_ip, '_15_minutes_minus': _15_minutes_minus}
             fetch_query = self.Base.db_execute_query(query_check_ip, mes_donnees_check_ip)
-            
+
             fetch_last_date = self.Base.db_execute_query(query_check_reported_date, {'ip': db_ip})
             result_latest_date = fetch_last_date.fetchone()
             
