@@ -643,7 +643,8 @@ class Base:
 
             if 'code' in req:
                 if not req['error']:
-                    self.log_print(f"INTC_HQ RECEIVE INFORMATION - {ip_address} --> {str(req['code'])} {req['message']}", "green")
+                    if self.DEBUG:
+                        self.log_print(f"INTC_HQ RECEIVE INFORMATION - {ip_address} --> {str(req['code'])} {req['message']}", "green")
                 else:
                     self.log_print(f"INTC_HQ RECEIVE INFORMATION - {ip_address} --> {str(req['code'])} {req['message']}", "red")
 
@@ -707,7 +708,8 @@ class Base:
 
             if 'code' in req:
                 if req['code'] == 200:
-                    self.log_print(f"INTC_HQ REPORTED - {ip_address} --> {str(req['code'])} {req['message']}", "green")
+                    if self.DEBUG:
+                        self.log_print(f"INTC_HQ REPORTED - {ip_address} --> {str(req['code'])} {req['message']}", "green")
                 else:
                     self.log_print(f"INTC_HQ RESPONSE - {ip_address} - {str(req['code'])} {req['message']}", "red")
 
