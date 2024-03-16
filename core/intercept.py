@@ -78,7 +78,7 @@ class Intercept:
 
                                 # Get ip information from the HQ
                                 hq_response = self.Base.get_information_from_HQ(ip)
-                                print(hq_response)
+                                # print(hq_response)
 
                                 if self.Base.db_record_ip(service_id, mod_name, ip, filter_name, user) > 0:
                                     self.Base.log_print(f'{mod_name} - {filter_name} - {service_id} - {ip} - {user} - recorded', 'white')
