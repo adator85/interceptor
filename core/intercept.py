@@ -77,13 +77,23 @@ class Intercept:
                                 self.Base.report_to_HQ(self.Base.get_sdatetime(), output, ip, service_id)
 
                                 # Get ip information from the HQ
-                                res = self.Base.get_information_from_HQ(ip)
-                                print(res)
+                                hq_response = self.Base.get_information_from_HQ(ip)
+                                print(hq_response)
 
                                 if self.Base.db_record_ip(service_id, mod_name, ip, filter_name, user) > 0:
                                     self.Base.log_print(f'{mod_name} - {filter_name} - {service_id} - {ip} - {user} - recorded', 'white')
-                                    
                                     local_abuseipdb_information = self.Base.get_local_abuseipdb_score(ip)
+
+                                    if not hq_response is None:
+                                        ab_score = hq_response['abuseipdb_score']
+                                        hq_totalReports = hq_response['hq_totalReports']
+                                        if ab_score >= self.Base.abuseipdb_jail_score:
+                                            if self.Base.ip_tables_add(mod_name, ip, self.Base.abuseipdb_jail_duration) > 0:
+                                                self.Base.log_print(f'{mod_name} - HQ - "{ip}" - Jailed for {str(self.Base.abuseipdb_jail_duration)} seconds | Reports: {str(totalReports)} / Score: {str(score)}', 'red')
+                                        elif hq_totalReports >= 10:
+                                            if self.Base.ip_tables_add(mod_name, ip, self.Base.abuseipdb_jail_duration) > 0:
+                                                self.Base.log_print(f'{mod_name} - HQ - "{ip}" - Jailed for {str(self.Base.abuseipdb_jail_duration)} seconds | HQ_Reports: {str(hq_totalReports)} / ab_Score {str(ab_score)}', 'red')
+
                                     if local_abuseipdb_information:
                                         isTor, totalReports, score = self.Base.get_local_abuseipdb_score(ip)
                                         if score >= self.Base.abuseipdb_jail_score:
