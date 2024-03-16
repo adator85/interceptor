@@ -85,8 +85,9 @@ class Intercept:
                                     local_abuseipdb_information = self.Base.get_local_abuseipdb_score(ip)
 
                                     if not hq_response is None:
-                                        ab_score = hq_response['abuseipdb_score']
-                                        hq_totalReports = hq_response['hq_totalReports']
+                                        ab_score = hq_response['abuseipdb_score'] if not hq_response['abuseipdb_score'] is None else 0
+                                        hq_totalReports = hq_response['hq_totalReports'] if not hq_response['hq_totalReports'] is None else 0
+
                                         if ab_score >= self.Base.abuseipdb_jail_score:
                                             if self.Base.ip_tables_add(mod_name, ip, self.Base.abuseipdb_jail_duration) > 0:
                                                 self.Base.log_print(f'{mod_name} - HQ - "{ip}" - Jailed for {str(self.Base.abuseipdb_jail_duration)} seconds | Reports: {str(hq_totalReports)} / Score: {str(ab_score)}', 'red')
