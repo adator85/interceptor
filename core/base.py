@@ -42,6 +42,7 @@ class Base:
         self.default_intc_active    = False                                     # Use head quarter information
         self.default_intc_report    = False                                     # Report to the HQ intrusions
         self.default_intc_timeout   = 5                                         # HQ Timeout
+        self.default_intc_jail_totalReports = 10                                # HQ jail the customer where total reports is greather than default total reports
 
         self.abuseipdb_config:dict          = {}                                # AbuseIPDB Configuration
         self.abuseipdb_status:bool          = False                             # Default abuseipdb status

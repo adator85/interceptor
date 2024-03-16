@@ -90,7 +90,7 @@ class Intercept:
                                         if ab_score >= self.Base.abuseipdb_jail_score:
                                             if self.Base.ip_tables_add(mod_name, ip, self.Base.abuseipdb_jail_duration) > 0:
                                                 self.Base.log_print(f'{mod_name} - HQ - "{ip}" - Jailed for {str(self.Base.abuseipdb_jail_duration)} seconds | Reports: {str(hq_totalReports)} / Score: {str(ab_score)}', 'red')
-                                        elif hq_totalReports >= 10:
+                                        elif hq_totalReports >= self.Base.default_intc_jail_totalReports:
                                             if self.Base.ip_tables_add(mod_name, ip, self.Base.abuseipdb_jail_duration) > 0:
                                                 self.Base.log_print(f'{mod_name} - HQ - "{ip}" - Jailed for {str(self.Base.abuseipdb_jail_duration)} seconds | HQ_Reports: {str(hq_totalReports)} / ab_Score {str(ab_score)}', 'red')
 
