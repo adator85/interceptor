@@ -632,7 +632,7 @@ class Base:
                 'Key': api_key
             }
 
-            response = requests.request(method='GET', url=url, headers=headers, timeout=self.default_intc_timeout)
+            response = requests.request(method='GET', url=url, headers=headers, timeout=self.default_intcHQ_timeout)
 
             # Formatted output
             req = json.loads(response.text)
