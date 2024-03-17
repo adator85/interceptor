@@ -666,7 +666,7 @@ class Base:
 
         return None
 
-    def report_to_HQ(self, intrusion_datetime:str, intrusion_detail:str, ip_address:str, intrusion_service_id:str) -> None:
+    def report_to_HQ(self, intrusion_datetime:str, intrusion_detail:str, ip_address:str, intrusion_service_id:str, module_name:str) -> None:
 
         try:
             api_name        = 'intc_hq'
@@ -691,7 +691,8 @@ class Base:
                 'intrusion_detail': intrusion_detail,
                 'intrusion_service_id': str(intrusion_service_id),
                 'ip_address': ip_address,
-                'reported_hostname': self.HOSTNAME
+                'reported_hostname': self.HOSTNAME,
+                'module_name': module_name
             }
 
             headers = {
