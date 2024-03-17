@@ -371,17 +371,12 @@ class Base:
         mes_donnees = {'datetime':self.minus_one_hour(24)}
         r_datetime = self.db_execute_query(query, mes_donnees)
 
-        query = f'''DELETE FROM abuseipdb WHERE score < :score and datetime <= :datetime'''
-        mes_donnees = {'datetime':self.minus_one_hour(24), 'score': self.default_intcHQ_jail_abuseipdb_score}
-        r_abuseipdb = self.db_execute_query(query, mes_donnees)
-
         affected_rows = r_datetime.rowcount
-        affected_rows_abuseipdb = r_abuseipdb.rowcount
         affected_rows_default_ipv4 = default_ip_request.rowcount
-        affected = affected_rows + affected_rows_abuseipdb + affected_rows_default_ipv4
+        affected = affected_rows + affected_rows_default_ipv4
 
         if affected > 0:
-            self.log_print(f'clean_db_logs - Deleted : Logs {str(affected_rows)} - AbuseIPDB {str(affected_rows_abuseipdb)} - Default ip {affected_rows_default_ipv4}','green')
+            self.log_print(f'clean_db_logs - Deleted : Logs {str(affected_rows)} - Default ip {affected_rows_default_ipv4}','green')
             response = True
 
         return response
