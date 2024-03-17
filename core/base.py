@@ -699,7 +699,7 @@ class Base:
                 'Key': api_key
             }
 
-            response = requests.request(method='POST', url=url, headers=headers, timeout=self.default_intc_timeout, json=querystring)
+            response = requests.request(method='POST', url=url, headers=headers, timeout=self.default_intcHQ_timeout, json=querystring)
 
             # Formatted output
             req = json.loads(response.text)
