@@ -561,7 +561,7 @@ class Base:
             # Defining the api-endpoint
             url = f'{api_url}report'
 
-            converted_attack_datetime = datetime.strptime(attack_datetime, "%d-%m-%Y %H:%M:%S")
+            converted_attack_datetime = datetime.strptime(attack_datetime, self.DATE_FORMAT)
             current_timezone = converted_attack_datetime.astimezone().tzinfo
             converted_attack_datetime = converted_attack_datetime.replace(tzinfo=current_timezone)
             timestamp_attack_datetime = converted_attack_datetime.isoformat()
@@ -666,7 +666,7 @@ class Base:
 
         return None
 
-    def report_to_HQ(self, intrusion_datetime:str, intrusion_detail:str, ip_address:str, intrusion_service_id:str, module_name:str) -> None:
+    def report_to_HQ(self, intrusion_datetime:str, intrusion_detail:str, ip_address:str, intrusion_service_id:str, module_name:str, keyword:str) -> None:
 
         try:
             api_name        = 'intc_hq'
@@ -692,7 +692,8 @@ class Base:
                 'intrusion_service_id': str(intrusion_service_id),
                 'ip_address': ip_address,
                 'reported_hostname': self.HOSTNAME,
-                'module_name': module_name
+                'module_name': module_name,
+                'keyword': keyword
             }
 
             headers = {

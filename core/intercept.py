@@ -74,7 +74,7 @@ class Intercept:
 
                             else:
                                 # Report to HQ
-                                self.Base.report_to_HQ(self.Base.get_sdatetime(), output, ip, service_id, mod_name)
+                                self.Base.report_to_HQ(self.Base.get_sdatetime(), output, ip, service_id, mod_name, filter_name)
 
                                 # Get ip information from the HQ
                                 hq_response = self.Base.get_information_from_HQ(ip)
