@@ -82,27 +82,17 @@ class Intercept:
 
                                 if self.Base.db_record_ip(service_id, mod_name, ip, filter_name, user) > 0:
                                     self.Base.log_print(f'{mod_name} - {filter_name} - {service_id} - {ip} - {user} - recorded', 'white')
-                                    local_abuseipdb_information = self.Base.get_local_abuseipdb_score(ip)
 
                                     if not hq_response is None:
                                         ab_score = hq_response['abuseipdb_score'] if not hq_response['abuseipdb_score'] is None else 0
                                         hq_totalReports = hq_response['hq_totalReports'] if not hq_response['hq_totalReports'] is None else 0
 
-                                        if ab_score >= self.Base.abuseipdb_jail_score:
-                                            if self.Base.ip_tables_add(mod_name, ip, self.Base.abuseipdb_jail_duration) > 0:
-                                                self.Base.log_print(f'{mod_name} - HQ - "{ip}" - Jailed for {str(self.Base.abuseipdb_jail_duration)} seconds | Reports: {str(hq_totalReports)} / Score: {str(ab_score)}', 'red')
-                                        elif hq_totalReports >= self.Base.default_intc_jail_totalReports:
-                                            if self.Base.ip_tables_add(mod_name, ip, self.Base.abuseipdb_jail_duration) > 0:
-                                                self.Base.log_print(f'{mod_name} - HQ - "{ip}" - Jailed for {str(self.Base.abuseipdb_jail_duration)} seconds | HQ_Reports: {str(hq_totalReports)} / ab_Score {str(ab_score)}', 'red')
-
-                                    if local_abuseipdb_information:
-                                        isTor, totalReports, score = self.Base.get_local_abuseipdb_score(ip)
-                                        if score >= self.Base.abuseipdb_jail_score:
-                                            if self.Base.ip_tables_add(mod_name, ip, self.Base.abuseipdb_jail_duration) > 0:
-                                                self.Base.log_print(f'{mod_name} - AbuseIPDB - "{ip}" - Moving to jail for {str(self.Base.abuseipdb_jail_duration)} seconds | Tor: {str(isTor)} / Reports: {str(totalReports)} / Score: {str(score)}', 'red')
-                                            self.Base.clean_iptables()
-                                        else:
-                                            self.execute_action(ip, mod_name)
+                                        if ab_score >= self.Base.default_intcHQ_jail_abuseipdb_score:
+                                            if self.Base.ip_tables_add(mod_name, ip, self.Base.default_intcHQ_jail_duration) > 0:
+                                                self.Base.log_print(f'{mod_name} - HQ - "{ip}" - Jailed for {str(self.Base.default_intcHQ_jail_duration)} seconds | Reports: {str(hq_totalReports)} / Score: {str(ab_score)}', 'red')
+                                        elif hq_totalReports >= self.Base.default_intcHQ_jail_totalReports:
+                                            if self.Base.ip_tables_add(mod_name, ip, self.Base.default_intcHQ_jail_duration) > 0:
+                                                self.Base.log_print(f'{mod_name} - HQ - "{ip}" - Jailed for {str(self.Base.default_intcHQ_jail_duration)} seconds | HQ_Reports: {str(hq_totalReports)} / ab_Score {str(ab_score)}', 'red')
                                     else:
                                         self.execute_action(ip, mod_name)
 

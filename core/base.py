@@ -39,16 +39,12 @@ class Base:
 
         self.api:dict               = {}                                        # Available API's configuration from global.json
 
-        self.default_intc_active    = False                                     # Use head quarter information
-        self.default_intc_report    = False                                     # Report to the HQ intrusions
-        self.default_intc_timeout   = 5                                         # HQ Timeout
-        self.default_intc_jail_totalReports = 10                                # HQ jail the customer where total reports is greather than default total reports
-
-        self.abuseipdb_config:dict          = {}                                # AbuseIPDB Configuration
-        self.abuseipdb_status:bool          = False                             # Default abuseipdb status
-        self.abuseipdb_report:bool          = False                             # Default abuseipdb report, if config file is set to true then Interceptor will send report intrusion to abuseIPDB
-        self.abuseipdb_jail_score:int       = 100                               # Default score for the jail if not set in the configuration
-        self.abuseipdb_jail_duration:int    = 600                               # Default duration for abusedbip if not set
+        self.default_intcHQ_active    = False                                   # Use head quarter information
+        self.default_intcHQ_report    = False                                   # Report to the HQ intrusions
+        self.default_intcHQ_timeout   = 5                                       # HQ Timeout
+        self.default_intcHQ_jail_totalReports = 10                              # HQ jail the customer where total reports is greather than default total reports
+        self.default_intcHQ_jail_abuseipdb_score = 100                          # Default score for the jail if not set in the configuration
+        self.default_intcHQ_jail_duration = 600                                 # Default HQ duration jail
 
         self.lock = threading.RLock()                                           # Define RLock for multithreading
         self.hb_active:bool = True                                              # Define heartbeat variable
