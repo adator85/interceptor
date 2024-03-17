@@ -372,7 +372,7 @@ class Base:
         r_datetime = self.db_execute_query(query, mes_donnees)
 
         query = f'''DELETE FROM abuseipdb WHERE score < :score and datetime <= :datetime'''
-        mes_donnees = {'datetime':self.minus_one_hour(24), 'score': self.abuseipdb_jail_score}
+        mes_donnees = {'datetime':self.minus_one_hour(24), 'score': self.default_intcHQ_jail_abuseipdb_score}
         r_abuseipdb = self.db_execute_query(query, mes_donnees)
 
         affected_rows = r_datetime.rowcount
