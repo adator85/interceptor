@@ -6,7 +6,7 @@
         "intc_hq": {
             "active": true,
             "report": true,
-            "url": "https://api.deb.biz.st/api/v1",
+            "url": "https://api.deb.biz.st/api/v1/",
             "api_key": "psOSoVA7DJmk5aCLYYVGIEp0VcSj3RRUpJoBGbVfxSPuS8EW9HVZBEIYVWgVdzOE",
             "abuseipdb_jail_score": 95,
             "intc_hq_jail_totalReports": 10,
