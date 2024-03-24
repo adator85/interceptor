@@ -300,9 +300,9 @@ class Base:
 
     def create_thread(self, func:object, func_args: tuple = (), func_name:str ='') -> None:
         try:
-            func_name = func.__name__
+            current_func_name = func.__name__
 
-            th = threading.Thread(target=func, args=func_args, name=str(func_name), daemon=True)
+            th = threading.Thread(target=func, args=func_args, name=str(current_func_name), daemon=True)
             th.start()
 
             self.running_threads.append(th)
