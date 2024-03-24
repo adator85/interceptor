@@ -17,8 +17,8 @@ class Cron:
         intc_hq_report = self.Base.api['intc_hq']['report'] if 'intc_hq' in self.Base.api else False
 
         # Initialiser heartbeat
-        self.Base.create_thread(self.Base.heartbeat, (self.Base.PULSE, ))
-        self.Base.create_thread(self.cron, (self.Base.clean_db_logs, 60 * 60))
+        self.Base.create_thread(self.Base.heartbeat, func_args=(self.Base.PULSE, ), func_name='Heartbeat')
+        self.Base.create_thread(self.cron, func_args=(self.Base.clean_db_logs, 60 * 60), func_name='clean_db_logs')
 
         if intc_hq_status and intc_hq_report:
             # Activate thread reporting to HQ

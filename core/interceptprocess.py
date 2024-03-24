@@ -65,7 +65,7 @@ class InterceptProcess:
         """
 
         for subprocess in self.subprocess:
-            self.Base.create_thread(self._run_subprocess, (subprocess, ))
+            self.Base.create_thread(self._run_subprocess, func_args=(subprocess, ), func_name=str(subprocess.args))
 
         return None
 

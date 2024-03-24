@@ -298,18 +298,15 @@ class Base:
 
         return None
 
-    def create_thread(self, func:object, func_args: tuple = ()) -> None:
+    def create_thread(self, func:object, func_args: tuple = (), func_name:str ='') -> None:
         try:
             func_name = func.__name__
-            # if func_name in self.running_threads:
-            #     print(f"HeartBeat is running")
-            #     return None
 
             th = threading.Thread(target=func, args=func_args, name=str(func_name), daemon=True)
             th.start()
 
             self.running_threads.append(th)
-            self.log_print(f"Thread ID : {str(th.ident)} | Thread name : {th.getName()} | Running Threads : {len(threading.enumerate())}", "green")
+            self.log_print(f"Thread ID : {str(th.ident)} | Thread name : {th.getName()} | Function name: {str(func_name)} | Running Threads : {len(threading.enumerate())}", "green")
 
         except AssertionError as ae:
             self.log_print(f'Assertion Error -> {ae}', 'red')
