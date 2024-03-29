@@ -26,7 +26,7 @@ class Base:
 
     def __init__(self) -> None:
 
-        self.VERSION                = '2.0.0'                                   # MAJOR.MINOR.BATCH
+        self.VERSION                = '2.0.1'                                   # MAJOR.MINOR.BATCH
         self.CURRENT_PYTHON_VERSION = python_version()                          # Current python version
         self.DATE_FORMAT            = '%Y-%m-%d %H:%M:%S'                       # The date format
         self.HOSTNAME               = socket.gethostname()                      # Hostname of the local machine
@@ -66,7 +66,11 @@ class Base:
         return unixtime
 
     def get_datetime(self) -> datetime:
+        """Get datetime object
 
+        Returns:
+            datetime: datetime object
+        """
         return datetime.now()
 
     def get_sdatetime(self) -> str:
@@ -92,7 +96,14 @@ class Base:
         return conveted_datetime
 
     def minus_one_hour(self, hours:float) -> str:
+        """Deduct hours from the current datetime
 
+        Args:
+            hours (float): How many hours you want to deduct from the current datetime
+
+        Returns:
+            str: the datetime minus the hour passed in the global format
+        """
         # '17-02-2024 19:26:16'
         current_datetime = datetime.now()
         result_datetime = current_datetime - timedelta(hours=hours)
@@ -102,7 +113,15 @@ class Base:
         return result_datetime
 
     def add_secondes_to_date(self, date_time:datetime, seconds_duration:int) -> datetime:
+        """Add seconds to the datetime
 
+        Args:
+            date_time (datetime): datetime you want to increment
+            seconds_duration (int): the seconds you want to add
+
+        Returns:
+            datetime: The datetime + the seconds
+        """
         result = date_time + timedelta(seconds=seconds_duration)
 
         return result
@@ -125,7 +144,15 @@ class Base:
         return engine, cursor
 
     def db_execute_query(self, query:str, params:dict = {}) -> CursorResult:
+        """Execute a sql query
 
+        Args:
+            query (str): The query you want to perform
+            params (dict, optional): The param you want to add to the query. Defaults to {}.
+
+        Returns:
+            CursorResult: The object CursorResult
+        """
         with self.lock:
             insert_query = text(query)
             if not params:
@@ -168,37 +195,25 @@ class Base:
             )
         '''
 
-        table_abuseipdb = f'''CREATE TABLE IF NOT EXISTS abuseipdb (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            datetime TEXT,
-            country_code TEXT,
-            ip TEXT,
-            isTor TEXT,
-            totalReports INTEGER,
-            score INTEGER
-            )
-        '''
-
-        table_reported_abuseipdb = f'''CREATE TABLE IF NOT EXISTS reported_abuseipdb (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            datetime TEXT,
-            reported_datetime TEXT,
-            ip TEXT,
-            category TEXT,
-            comment TEXT
-            )
-        '''
-
         self.db_execute_query(table_logs)
         self.db_execute_query(table_iptables)
         self.db_execute_query(table_iptables_logs)
-        self.db_execute_query(table_abuseipdb)
-        self.db_execute_query(table_reported_abuseipdb)
 
         return None
 
     def db_record_ip(self, service_id:str, module_name:str, ip:str, keyword:str, user:str) -> int:
+        """Record an ip into the logs table
 
+        Args:
+            service_id (str): The service id
+            module_name (str): The module name
+            ip (str): The remote ip address
+            keyword (str): The keyword
+            user (str): The user attempt
+
+        Returns:
+            int: The number of rows affected
+        """
         query = '''INSERT INTO logs (datetime, service_id, module_name, ip, keyword, user) 
                 VALUES (:datetime,:service_id, :module_name, :ip, :keyword, :user)
                 '''
@@ -216,7 +231,16 @@ class Base:
         return r.rowcount
 
     def db_record_iptables(self, module_name:str, ip:str, duration:int) -> int:
+        """Record the remote ip address into the iptables table
 
+        Args:
+            module_name (str): The module name
+            ip (str): The remote ip address
+            duration (int): The ban duration
+
+        Returns:
+            int: The number of rows affected
+        """
         query = '''INSERT INTO iptables (datetime, module_name, ip, duration) 
                 VALUES (:datetime, :module_name, :ip, :duration)
                 '''
@@ -230,8 +254,17 @@ class Base:
         r = self.db_execute_query(query, mes_donnees)
         return r.rowcount
 
-    def db_record_iptables_logs(self, module_name:str, ip:str, duration:int) -> None:
+    def db_record_iptables_logs(self, module_name:str, ip:str, duration:int) -> int:
+        """Record the remote ip address that has been jailed
 
+        Args:
+            module_name (str): The module name
+            ip (str): The remote ip address
+            duration (int): The duration of the jail
+
+        Returns:
+            int: The number of rows affected
+        """
         query = '''INSERT INTO iptables_logs (datetime, module_name, ip, duration) 
                 VALUES (:datetime, :module_name, :ip, :duration)
                 '''
@@ -242,18 +275,26 @@ class Base:
                         'duration':duration
                         }
 
-        self.db_execute_query(query, mes_donnees)
-        return None
+        r = self.db_execute_query(query, mes_donnees)
+        return r.rowcount
 
-    def db_remove_iptables(self, ip:str) -> None:
+    def db_remove_iptables(self, ip:str) -> int:
+        """Remove remote ip address from the iptables table
+        when the jail duration expire
 
+        Args:
+            ip (str): The remote ip address
+
+        Returns:
+            int: The number of rows affected
+        """
         query = '''DELETE FROM iptables WHERE ip = :ip'''
 
         mes_donnees = {'ip': ip}
 
-        self.db_execute_query(query, mes_donnees)
+        r = self.db_execute_query(query, mes_donnees)
 
-        return None
+        return r.rowcount
 
     def logs_init(self) -> None:
         """Create logs directory if not available
@@ -312,7 +353,12 @@ class Base:
             self.log_print(f'Assertion Error -> {ae}', 'red')
 
     def heartbeat(self, beat:float) -> None:
+        """Run periodic action every {beat} seconds
+        this method must be run in a thread
 
+        Args:
+            beat (float): Duration between every action
+        """
         while self.hb_active:
             time.sleep(beat)
             self.clean_iptables()
@@ -333,12 +379,9 @@ class Base:
         return no_files
 
     def clean_iptables(self) -> None:
-
-        # Récuperer la date de la base de donnée
-        # Convertir la date
-        # Ajouter la duration
-        # si la date + duration > date actuel supprimer l'enregistrement
-
+        """Clean iptables db table and iptables
+        release remote ip address when the duration is expired
+        """
         query = f'''SELECT ip, datetime, duration, module_name 
                     FROM iptables
                 '''
