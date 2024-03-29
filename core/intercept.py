@@ -9,7 +9,7 @@ class Intercept:
     __PATTERN_IPV6 = r'([0-9a-fA-F]{1,4}(?::[0-9a-fA-F]{1,4}){7})'
 
     def __init__(self, base: base.Base, parser: parser.Parser, subprocess:Popen, subprocess_detail:dict) -> None:
-
+        
         self.Base                       = base                              # Création d'une instance Base()
         self.Parser                     = parser                            # Création d'une instance Parser()
         self.subprocess                 = subprocess                        # Get the source of the log
@@ -52,7 +52,7 @@ class Intercept:
 
         # Charger les exceptions du process en cours
         for key, exception in modules[mod_name].items():
-            if type(exception) == list and key == 'ip_exceptions':
+            if type(exception) == list and key == 'exceptions':
                 for ip_exception in exception:
                     ip_exceptions.append(ip_exception)
 
@@ -63,7 +63,7 @@ class Intercept:
                     for filter_name, filter_value in filters.items():
                         lookup = re.search(filter_value, output)
                         if lookup:
-
+                            
                             # Si l'ip est dans liste d'exception globale
                             if ip in self.Parser.global_ip_exceptions:
                                 self.Base.log_print(f'Global exception - [{ip}] was exempted from the analysis ...', 'red')
@@ -73,18 +73,26 @@ class Intercept:
                                 self.Base.log_print(f'Module "{mod_name}" exception - [{ip}] was exempted from the analysis ...', 'red')
 
                             else:
+                                # Report to HQ
+                                self.Base.report_to_HQ(self.Base.get_sdatetime(), output, ip, service_id, mod_name, filter_name)
+
+                                # Get ip information from the HQ
+                                hq_response = self.Base.get_information_from_HQ(ip)
+                                # print(hq_response)
+
                                 if self.Base.db_record_ip(service_id, mod_name, ip, filter_name, user) > 0:
                                     self.Base.log_print(f'{mod_name} - {filter_name} - {service_id} - {ip} - {user} - recorded', 'white')
-                                    
-                                    local_abuseipdb_information = self.Base.get_local_abuseipdb_score(ip)
-                                    if local_abuseipdb_information:
-                                        isTor, totalReports, score = self.Base.get_local_abuseipdb_score(ip)
-                                        if score >= self.Base.abuseipdb_jail_score:
-                                            if self.Base.ip_tables_add(mod_name, ip, self.Base.abuseipdb_jail_duration) > 0:
-                                                self.Base.log_print(f'{mod_name} - AbuseIPDB - "{ip}" - Moving to jail for {str(self.Base.abuseipdb_jail_duration)} seconds | Tor: {str(isTor)} / Reports: {str(totalReports)} / Score: {str(score)}', 'red')
-                                            self.Base.clean_iptables()
-                                        else:
-                                            self.execute_action(ip, mod_name)
+
+                                    if not hq_response is None and not hq_response['error']:
+                                        ab_score = hq_response['abuseipdb_score'] if not hq_response['abuseipdb_score'] is None else 0
+                                        hq_totalReports = hq_response['hq_totalReports'] if not hq_response['hq_totalReports'] is None else 0
+
+                                        if ab_score >= self.Base.default_intcHQ_jail_abuseipdb_score:
+                                            if self.Base.ip_tables_add(mod_name, ip, self.Base.default_intcHQ_jail_duration) > 0:
+                                                self.Base.log_print(f'{mod_name} - HQ - "{ip}" - Jailed for {str(self.Base.default_intcHQ_jail_duration)} seconds | Reports: {str(hq_totalReports)} / Score: {str(ab_score)}', 'red')
+                                        elif hq_totalReports >= self.Base.default_intcHQ_jail_totalReports:
+                                            if self.Base.ip_tables_add(mod_name, ip, self.Base.default_intcHQ_jail_duration) > 0:
+                                                self.Base.log_print(f'{mod_name} - HQ - "{ip}" - Jailed for {str(self.Base.default_intcHQ_jail_duration)} seconds | HQ_Reports: {str(hq_totalReports)} / ab_Score {str(ab_score)}', 'red')
                                     else:
                                         self.execute_action(ip, mod_name)
 
@@ -149,7 +157,7 @@ class Intercept:
             if self.Parser.modules[mod_name]['inc_service_id']:
                 unixtime = str(self.Base.get_unixtime())
                 inc_service_id = True
-            
+
         #for mod_name in self.Parser.module_names:
         pattern_service_id = self.Parser.modules[mod_name]['rgx_service_id']
         lookup_service_id = re.search(pattern_service_id, output)
@@ -181,7 +189,7 @@ class Intercept:
                         list_search = list(lookup_ip.groups())
                         ip_address = list_search[0]
                         return ip_address
-        
+
         lookup_ip_address = re.search(self.__PATTERN_IPV4, output)
         if lookup_ip_address:
             list_search = list(lookup_ip_address.groups())

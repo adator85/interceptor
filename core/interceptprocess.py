@@ -6,12 +6,7 @@ from core import parser, base, intercept
 class InterceptProcess:
 
     def __init__(self, base:base.Base, parser:parser.Parser) -> None:
-        """Initiate subprocesses
-
-        Args:
-            base (base.Base): Current Intance of Base class
-            parser (parser.Parser): Current Instance of Parser class
-        """
+        # Initialiser les processus
 
         self.subprocess:list[Popen[bytes]] = []
         self.subprocess_detail:dict = {}
@@ -51,7 +46,7 @@ class InterceptProcess:
     def _create_subprocess(self, logs_source:str=None) -> Union[Popen[bytes], None]:
 
         if logs_source is None:
-            process = Popen(['journalctl', '-f'], stdout=PIPE, stderr=PIPE)
+            process = Popen(['journalctl', '-f', '-n', '0'], stdout=PIPE, stderr=PIPE)
             self.subprocess.append(process)
             return process
 
@@ -66,11 +61,11 @@ class InterceptProcess:
         return process
 
     def create_threads_for_processes(self) -> None:
-        """Execute every subprocess in a separate thread
+        """Execute chaque subprocess dans un thread séparé
         """
 
         for subprocess in self.subprocess:
-            self.Base.create_thread(self._run_subprocess, (subprocess, ))
+            self.Base.create_thread(self._run_subprocess, func_args=(subprocess, ), func_name=str(subprocess.args))
 
         return None
 
@@ -84,15 +79,3 @@ class InterceptProcess:
                 Intercept.run_process(output)
                 if self.Base.DEBUG:
                     print(output)
-
-    def close_interceptor(self) -> None:
-        """close interceptor
-        """
-
-        self.Base.clean_iptables()                      # We clean iptables and iptables local table
-
-        for subprocess in self.subprocess:
-            self.Base.log_print(f'Terminate subprocess {subprocess}', 'green')
-            subprocess.terminate()
-
-        return None

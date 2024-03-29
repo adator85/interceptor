@@ -56,7 +56,7 @@ class Install:
         if self.updating_pip:
             print("===> Removing pip cache")
             check_call(['pip','cache','purge'])
-            
+
             print("===> Check if pip is up to date")
             check_call(['python', '-m', 'pip', 'install', '--upgrade', 'pip'])
 

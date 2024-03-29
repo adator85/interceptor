@@ -4,7 +4,7 @@ from datetime import datetime, timedelta
 from sqlalchemy import create_engine, Engine, Connection, CursorResult
 from sqlalchemy.sql import text
 from platform import python_version
-from typing import Union, Literal
+from typing import Union
 
 class Base:
     '''### Class contain all the basic methods
@@ -17,8 +17,8 @@ class Base:
     - Abuseipdb interactions methods
     '''
 
-    __COLORS:dict = {'white': '\033[97m',
-                'green': '\033[92m',
+    __COLORS:dict = {'white': '\033[97m', 
+                'green': '\033[92m', 
                 'red': '\033[91m',
                 'yellow': '\033[93m',
                 'reset':'\033[0m'
@@ -26,7 +26,7 @@ class Base:
 
     def __init__(self) -> None:
 
-        self.VERSION                = '1.6.6'                                   # MAJOR.MINOR.BATCH
+        self.VERSION                = '2.0.1'                                   # MAJOR.MINOR.BATCH
         self.CURRENT_PYTHON_VERSION = python_version()                          # Current python version
         self.DATE_FORMAT            = '%Y-%m-%d %H:%M:%S'                       # The date format
         self.HOSTNAME               = socket.gethostname()                      # Hostname of the local machine
@@ -37,12 +37,14 @@ class Base:
         self.default_jail_duration  = 120                                       # Default Duration in seconds before the release
         self.default_ipv4           = '0.0.0.0'                                 # Default ipv4 to be used by Interceptor
 
-        self.abuseipdb_config:dict          = {}                                # AbuseIPDB Configuration
-        self.abuseipdb_timeout:int          = 5                                 # AbuseIPDB default Timeout
-        self.abuseipdb_status:bool          = False                             # Default abuseipdb status
-        self.abuseipdb_report:bool          = False                             # Default abuseipdb report, if config file is set to true then Interceptor will send report intrusion to abuseIPDB
-        self.abuseipdb_jail_score:int       = 100                               # Default score for the jail if not set in the configuration
-        self.abuseipdb_jail_duration:int    = 600                               # Default duration for abusedbip if not set
+        self.api:dict               = {}                                        # Available API's configuration from global.json
+
+        self.default_intcHQ_active    = False                                   # Use head quarter information
+        self.default_intcHQ_report    = False                                   # Report to the HQ intrusions
+        self.default_intcHQ_timeout   = 5                                       # HQ Timeout
+        self.default_intcHQ_jail_totalReports = 10                              # HQ jail the customer where total reports is greather than default total reports
+        self.default_intcHQ_jail_abuseipdb_score = 100                          # Default score for the jail if not set in the configuration
+        self.default_intcHQ_jail_duration = 600                                 # Default HQ duration jail
 
         self.lock = threading.RLock()                                           # Define RLock for multithreading
         self.hb_active:bool = True                                              # Define heartbeat variable
@@ -55,20 +57,27 @@ class Base:
         return None
 
     def get_unixtime(self)->int:
-        """
-        Cette fonction retourne un UNIXTIME de type 12365456
-        Return: Current time in seconds since the Epoch (int)
+        """Get Unixtime in int format
+
+        Returns:
+            int: Current time in seconds
         """
         unixtime = int( time.time() )
         return unixtime
 
     def get_datetime(self) -> datetime:
+        """Get datetime object
 
+        Returns:
+            datetime: datetime object
+        """
         return datetime.now()
 
     def get_sdatetime(self) -> str:
-        """
-        Retourne une date au format string (2023-12-23 20:50:59)
+        """Get datetime in string format defined by self.DATE_FORMAT
+
+        Returns:
+            str: date in string format
         """
         currentdate = datetime.now().strftime(self.DATE_FORMAT)
         return currentdate
@@ -87,7 +96,14 @@ class Base:
         return conveted_datetime
 
     def minus_one_hour(self, hours:float) -> str:
+        """Deduct hours from the current datetime
 
+        Args:
+            hours (float): How many hours you want to deduct from the current datetime
+
+        Returns:
+            str: the datetime minus the hour passed in the global format
+        """
         # '17-02-2024 19:26:16'
         current_datetime = datetime.now()
         result_datetime = current_datetime - timedelta(hours=hours)
@@ -97,12 +113,25 @@ class Base:
         return result_datetime
 
     def add_secondes_to_date(self, date_time:datetime, seconds_duration:int) -> datetime:
+        """Add seconds to the datetime
 
+        Args:
+            date_time (datetime): datetime you want to increment
+            seconds_duration (int): the seconds you want to add
+
+        Returns:
+            datetime: The datetime + the seconds
+        """
         result = date_time + timedelta(seconds=seconds_duration)
 
         return result
 
     def db_init(self) -> tuple[Engine, Connection]:
+        """Initiat DB Connexion
+
+        Returns:
+            tuple[Engine, Connection]: tuple with Engine and Connection objects
+        """
         db_directory = f'db{os.sep}'
         db_full_path = f'{db_directory}software.db'
 
@@ -115,7 +144,15 @@ class Base:
         return engine, cursor
 
     def db_execute_query(self, query:str, params:dict = {}) -> CursorResult:
+        """Execute a sql query
 
+        Args:
+            query (str): The query you want to perform
+            params (dict, optional): The param you want to add to the query. Defaults to {}.
+
+        Returns:
+            CursorResult: The object CursorResult
+        """
         with self.lock:
             insert_query = text(query)
             if not params:
@@ -158,37 +195,25 @@ class Base:
             )
         '''
 
-        table_abuseipdb = f'''CREATE TABLE IF NOT EXISTS abuseipdb (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            datetime TEXT,
-            country_code TEXT,
-            ip TEXT,
-            isTor TEXT,
-            totalReports INTEGER,
-            score INTEGER
-            )
-        '''
-
-        table_reported_abuseipdb = f'''CREATE TABLE IF NOT EXISTS reported_abuseipdb (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            datetime TEXT,
-            reported_datetime TEXT,
-            ip TEXT,
-            category TEXT,
-            comment TEXT
-            )
-        '''
-
         self.db_execute_query(table_logs)
         self.db_execute_query(table_iptables)
         self.db_execute_query(table_iptables_logs)
-        self.db_execute_query(table_abuseipdb)
-        self.db_execute_query(table_reported_abuseipdb)
 
         return None
 
     def db_record_ip(self, service_id:str, module_name:str, ip:str, keyword:str, user:str) -> int:
+        """Record an ip into the logs table
 
+        Args:
+            service_id (str): The service id
+            module_name (str): The module name
+            ip (str): The remote ip address
+            keyword (str): The keyword
+            user (str): The user attempt
+
+        Returns:
+            int: The number of rows affected
+        """
         query = '''INSERT INTO logs (datetime, service_id, module_name, ip, keyword, user) 
                 VALUES (:datetime,:service_id, :module_name, :ip, :keyword, :user)
                 '''
@@ -206,7 +231,16 @@ class Base:
         return r.rowcount
 
     def db_record_iptables(self, module_name:str, ip:str, duration:int) -> int:
+        """Record the remote ip address into the iptables table
 
+        Args:
+            module_name (str): The module name
+            ip (str): The remote ip address
+            duration (int): The ban duration
+
+        Returns:
+            int: The number of rows affected
+        """
         query = '''INSERT INTO iptables (datetime, module_name, ip, duration) 
                 VALUES (:datetime, :module_name, :ip, :duration)
                 '''
@@ -220,8 +254,17 @@ class Base:
         r = self.db_execute_query(query, mes_donnees)
         return r.rowcount
 
-    def db_record_iptables_logs(self, module_name:str, ip:str, duration:int) -> None:
+    def db_record_iptables_logs(self, module_name:str, ip:str, duration:int) -> int:
+        """Record the remote ip address that has been jailed
 
+        Args:
+            module_name (str): The module name
+            ip (str): The remote ip address
+            duration (int): The duration of the jail
+
+        Returns:
+            int: The number of rows affected
+        """
         query = '''INSERT INTO iptables_logs (datetime, module_name, ip, duration) 
                 VALUES (:datetime, :module_name, :ip, :duration)
                 '''
@@ -232,18 +275,26 @@ class Base:
                         'duration':duration
                         }
 
-        self.db_execute_query(query, mes_donnees)
-        return None
+        r = self.db_execute_query(query, mes_donnees)
+        return r.rowcount
 
-    def db_remove_iptables(self, ip:str) -> None:
+    def db_remove_iptables(self, ip:str) -> int:
+        """Remove remote ip address from the iptables table
+        when the jail duration expire
 
+        Args:
+            ip (str): The remote ip address
+
+        Returns:
+            int: The number of rows affected
+        """
         query = '''DELETE FROM iptables WHERE ip = :ip'''
 
         mes_donnees = {'ip': ip}
 
-        self.db_execute_query(query, mes_donnees)
+        r = self.db_execute_query(query, mes_donnees)
 
-        return None
+        return r.rowcount
 
     def logs_init(self) -> None:
         """Create logs directory if not available
@@ -258,7 +309,7 @@ class Base:
 
         return None
 
-    def log_print(self, string:str, color:Literal['white', 'green','red','yellow'] = None) -> None:
+    def log_print(self, string:str, color:str = None) -> None:
         """Print logs in the terminal and record it in a file
 
         Args:
@@ -288,24 +339,26 @@ class Base:
 
         return None
 
-    def create_thread(self, func:object, func_args: tuple = ()) -> None:
+    def create_thread(self, func:object, func_args: tuple = (), func_name:str ='') -> None:
         try:
-            func_name = func.__name__
-            # if func_name in self.running_threads:
-            #     print(f"HeartBeat is running")
-            #     return None
+            current_func_name = func.__name__
 
-            th = threading.Thread(target=func, args=func_args, name=str(func_name), daemon=True)
+            th = threading.Thread(target=func, args=func_args, name=str(current_func_name), daemon=True)
             th.start()
 
             self.running_threads.append(th)
-            self.log_print(f"Thread ID : {str(th.ident)} | Thread name : {th.getName()} | Running Threads : {len(threading.enumerate())}", "green")
+            self.log_print(f"Thread ID : {str(th.ident)} | Thread name : {th.getName()} | Function name: {str(func_name)} | Running Threads : {len(threading.enumerate())}", "green")
 
         except AssertionError as ae:
             self.log_print(f'Assertion Error -> {ae}', 'red')
 
     def heartbeat(self, beat:float) -> None:
+        """Run periodic action every {beat} seconds
+        this method must be run in a thread
 
+        Args:
+            beat (float): Duration between every action
+        """
         while self.hb_active:
             time.sleep(beat)
             self.clean_iptables()
@@ -326,12 +379,9 @@ class Base:
         return no_files
 
     def clean_iptables(self) -> None:
-        
-        # Récuperer la date de la base de donnée
-        # Convertir la date
-        # Ajouter la duration
-        # si la date + duration > date actuel supprimer l'enregistrement
-
+        """Clean iptables db table and iptables
+        release remote ip address when the duration is expired
+        """
         query = f'''SELECT ip, datetime, duration, module_name 
                     FROM iptables
                 '''
@@ -349,12 +399,10 @@ class Base:
                 self.ip_tables_remove(db_ip)
                 self.log_print(f'{db_module_name} - "{db_ip}" - released from jail', 'green')
 
-        return None
-
-    def clean_db_logs(self) -> None:
+    def clean_db_logs(self) -> bool:
         """Clean logs that they have more than 24 hours
         """
-
+        response = False
         query = "DELETE FROM logs WHERE ip = :ip"
         mes_donnees = {'ip': self.default_ipv4}
         default_ip_request = self.db_execute_query(query,mes_donnees)
@@ -363,19 +411,15 @@ class Base:
         mes_donnees = {'datetime':self.minus_one_hour(24)}
         r_datetime = self.db_execute_query(query, mes_donnees)
 
-        query = f'''DELETE FROM abuseipdb WHERE score < :score and datetime <= :datetime'''
-        mes_donnees = {'datetime':self.minus_one_hour(24), 'score': self.abuseipdb_jail_score}
-        r_abuseipdb = self.db_execute_query(query, mes_donnees)
-
         affected_rows = r_datetime.rowcount
-        affected_rows_abuseipdb = r_abuseipdb.rowcount
         affected_rows_default_ipv4 = default_ip_request.rowcount
-        affected = affected_rows + affected_rows_abuseipdb + affected_rows_default_ipv4
+        affected = affected_rows + affected_rows_default_ipv4
 
         if affected > 0:
-            self.log_print(f'clean_db_logs - Deleted : Logs {str(affected_rows)} - AbuseIPDB {str(affected_rows_abuseipdb)} - Default ip {affected_rows_default_ipv4}','green')
+            self.log_print(f'clean_db_logs - Deleted : Logs {str(affected_rows)} - Default ip {affected_rows_default_ipv4}','green')
+            response = True
 
-        return None
+        return response
 
     def ip_tables_add(self, module_name:str, ip:str, duration_seconds:int) -> int:
 
@@ -386,21 +430,18 @@ class Base:
         os.system(system_command)
         rowcount = self.db_record_iptables(module_name, ip, duration_seconds)
         self.db_record_iptables_logs(module_name, ip, duration_seconds)
-
         return rowcount
 
     def ip_tables_remove(self, ip:str) -> None:
 
         system_command = '/sbin/iptables -D INPUT -s {} -j REJECT'.format(ip)
         os.system(system_command)
-
         return None
 
     def ip_tables_reset(self) -> None:
 
         system_command = '/sbin/iptables -F'
         os.system(system_command)
-
         return None
 
     def ip_tables_isExist(self, ip:str) -> bool:
@@ -453,7 +494,7 @@ class Base:
             'Key': api_key
         }
         try:
-            response = requests.request(method='GET', url=url, headers=headers, params=querystring, timeout=self.abuseipdb_timeout)
+            response = requests.request(method='GET', url=url, headers=headers, params=querystring, timeout=5)
 
             # Formatted output
             req = json.loads(response.text)
@@ -504,7 +545,7 @@ class Base:
             isTor = int(fetch_result.isTor)
             totalReports = int(fetch_result.totalReports)
             score = int(fetch_result.score)
-            
+
             response = (isTor, totalReports, score)       
 
         return response
@@ -532,9 +573,9 @@ class Base:
             elif ip_address == self.default_ipv4:
                 return None
 
-            api_url    = self.abuseipdb_config[api_name]['url']
+            api_url         = self.abuseipdb_config[api_name]['url']
             api_key         = self.abuseipdb_config[api_name]['api_key']
-            
+
             if api_url == '' or api_key == '':
                 self.log_print('AbuseIPDB - API Key or API ENDPOINT Error : empty','red')
                 return None
@@ -569,7 +610,7 @@ class Base:
                 'Key': api_key
             }
 
-            with requests.request(method='POST', url=url, headers=headers, params=params, timeout=self.abuseipdb_timeout) as response:
+            with requests.request(method='POST', url=url, headers=headers, params=params, timeout=2) as response:
 
                 req = json.loads(response.text)
                 if 'errors' in req:
@@ -596,3 +637,125 @@ class Base:
             self.log_print(f'API Error Timeout : {timeout}','red')
         except requests.ConnectionError as ConnexionError:
             self.log_print(f'API Connection Error : {ConnexionError}','red')
+
+    def get_information_from_HQ(self, ip_address: str) -> Union[dict, None]:
+
+        try:
+            api_name        = 'intc_hq'
+
+            if not api_name in self.api:
+                return None
+            elif not self.api[api_name]['active']:
+                return None
+            elif not self.api[api_name]['report']:
+                return None
+            elif ip_address == self.default_ipv4:
+                return None
+
+            url = f"{self.api[api_name]['url']}check/" if 'url' in self.api[api_name] else None
+            api_key = self.api[api_name]['api_key'] if 'api_key' in self.api[api_name] else None
+
+            if url is None:
+                return None
+
+            url = url + ip_address
+
+            headers = {
+                'Accept': 'application/json',
+                'Content-Type': 'application/json',
+                'user-agent': 'Interceptor Client',
+                'Key': api_key
+            }
+
+            response = requests.request(method='GET', url=url, headers=headers, timeout=self.default_intcHQ_timeout)
+
+            # Formatted output
+            req = json.loads(response.text)
+
+            if 'code' in req:
+                if not req['error']:
+                    if self.DEBUG:
+                        self.log_print(f"INTC_HQ RECEIVE INFORMATION - {ip_address} --> {str(req['code'])} {req['message']}", "green")
+                else:
+                    self.log_print(f"INTC_HQ RECEIVE INFORMATION - {ip_address} --> {str(req['code'])} {req['message']}", "red")
+
+            return req
+
+        except KeyError as ke:
+            self.log_print(f'API Error KeyError : {ke}','red')
+            return None
+        except TypeError as te:
+            self.log_print(f'API Error TypeError : {te}','red')
+            return None
+        except requests.ReadTimeout as timeout:
+            self.log_print(f'API Error Timeout : {timeout}','red')
+            return None
+        except requests.ConnectionError as ConnexionError:
+            if self.DEBUG:
+                self.log_print(f'API Connection Error : {ConnexionError}','red')
+            return None
+
+        return None
+
+    def report_to_HQ(self, intrusion_datetime:str, intrusion_detail:str, ip_address:str, intrusion_service_id:str, module_name:str, keyword:str) -> None:
+
+        try:
+            api_name        = 'intc_hq'
+
+            if not api_name in self.api:
+                return None
+            elif not self.api[api_name]['active']:
+                return None
+            elif not self.api[api_name]['report']:
+                return None
+            elif ip_address == self.default_ipv4:
+                return None
+
+            url = f"{self.api[api_name]['url']}report/" if 'url' in self.api[api_name] else None
+            api_key = self.api[api_name]['api_key'] if 'api_key' in self.api[api_name] else None
+
+            if url is None:
+                return None
+
+            querystring = {
+                'intrusion_datetime': intrusion_datetime,
+                'intrusion_detail': intrusion_detail,
+                'intrusion_service_id': str(intrusion_service_id),
+                'ip_address': ip_address,
+                'reported_hostname': self.HOSTNAME,
+                'module_name': module_name,
+                'keyword': keyword
+            }
+
+            headers = {
+                'Accept': 'application/json',
+                'Content-Type': 'application/json',
+                'user-agent': 'Interceptor Client',
+                'Key': api_key
+            }
+
+            response = requests.request(method='POST', url=url, headers=headers, timeout=self.default_intcHQ_timeout, json=querystring)
+
+            # Formatted output
+            req = json.loads(response.text)
+
+            if 'code' in req:
+                if req['code'] == 200:
+                    if self.DEBUG:
+                        self.log_print(f"INTC_HQ REPORTED - {ip_address} --> {str(req['code'])} {req['message']}", "green")
+                else:
+                    self.log_print(f"INTC_HQ RESPONSE - {ip_address} - {str(req['code'])} {req['message']}", "red")
+
+            return None
+
+        except KeyError as ke:
+            self.log_print(f'API Error KeyError : {ke}','red')
+        except TypeError as te:
+            self.log_print(f'API Error TypeError : {te}','red')
+        except requests.ReadTimeout as timeout:
+            self.log_print(f'API Error Timeout : {timeout}','red')
+        except requests.ConnectionError as ConnexionError:
+            if self.DEBUG:
+                self.log_print(f'API Connection Error : {ConnexionError}','red')
+
+        return None

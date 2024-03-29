@@ -15,30 +15,24 @@ import os, shutil
 class Setup():
 
     def __init__(self) -> None:
-        self.__version__        = '1.1.0'
-        self.PYTHON_MIN_VERSION = '3.9'
+        self.__version__ = '1.0.0'
 
         if not self.is_root():
             self.iprint('/!\\ user must be root /!\\')
             exit(5)
-        
-        if not self.checkPythonVersion():
-            self.iprint(f'/!\\ You must use correct version of python > {self.PYTHON_MIN_VERSION} /!\\')
-            exit(5)
 
         # Python requirements modules
         self.required_python_modules = ['requests','sqlalchemy']
-        
+
         self.install_folder = os.getcwd()
         self.systemd_folder = f'/etc/systemd/system/'
         self.virtual_env_folder_name = '.intvenv'
         self.venv_full_path = f'{self.install_folder}{os.sep}{self.virtual_env_folder_name}{os.sep}bin{os.sep}python'
         self.interceptor_full_path = f'{self.install_folder}{os.sep}main.py'
 
-      
         self.cmd_venv_command = ['python3', '-m', 'venv', self.virtual_env_folder_name]
-        self.cmd_debian_requirements = ['apt', 'install', '-y', 'python3-pip', 'python3-venv', 'iptables']
-        
+        self.cmd_debian_requirements = ['apt', 'install', '-y', 'python3-pip', 'python3-venv']
+
         self.cmd_python_requirements = [f'{self.install_folder}{os.sep}{self.virtual_env_folder_name}{os.sep}bin{os.sep}pip', 'install']
         self.cmd_python_requirements.extend(self.required_python_modules)
 
@@ -79,31 +73,13 @@ class Setup():
     def run_subprocess(self, command:list) -> None:
 
         self.iprint(command)
-        try:            
+        try:
             check_call(command)
             self.iprint("La commande s'est terminée avec succès.")
         except CalledProcessError as e:
             self.iprint(f"La commande a échoué avec le code de retour :{e.returncode}")
             self.iprint(f"Try to install dependencies ...")
             exit(5)
-
-    def checkPythonVersion(self) -> bool:
-        """Test si la version de python est autorisée ou non
-
-        Returns:
-            bool: True si la version de python est autorisé sinon False
-        """
-        python_required_version = self.PYTHON_MIN_VERSION.split('.')
-        python_current_version = python_version().split('.')
-
-        if int(python_current_version[0]) < int(python_required_version[0]):
-            print(f"## Your python version must be greather than or equal to {self.PYTHON_MIN_VERSION} ##")
-            return False
-        elif int(python_current_version[1]) < int(python_required_version[1]):
-            print(f"### Your python version must be greather than or equal to {self.PYTHON_MIN_VERSION} ###")
-            return False
-
-        return True
 
     def iprint(self, messsage:str) -> None:
 
@@ -112,7 +88,7 @@ class Setup():
         return None
 
     def create_service_file(self) -> None:
-        
+
         if os.path.exists(f'{self.systemd_folder}{os.sep}Interceptor.service'):
             self.iprint(f'/!\\ Service already created in the system /!\\')
             return None
@@ -140,5 +116,5 @@ WantedBy=multi-user.target
             shutil.copy(source, destination)
             os.rename(f'{self.systemd_folder}{os.sep}Interceptor.service.generated', f'{self.systemd_folder}{os.sep}Interceptor.service')
             self.iprint(f'Service file moved to systemd folder {self.systemd_folder}')
-        
+
 Setup()
