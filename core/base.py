@@ -26,7 +26,7 @@ class Base:
 
     def __init__(self) -> None:
 
-        self.VERSION                = '2.0.1'                                   # MAJOR.MINOR.BATCH
+        self.VERSION                = '2.1.0'                                   # MAJOR.MINOR.BATCH
         self.CURRENT_PYTHON_VERSION = python_version()                          # Current python version
         self.DATE_FORMAT            = '%Y-%m-%d %H:%M:%S'                       # The date format
         self.HOSTNAME               = socket.gethostname()                      # Hostname of the local machine
@@ -168,10 +168,11 @@ class Base:
 
         table_logs = f'''CREATE TABLE IF NOT EXISTS logs (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            datetime TEXT,
-            service_id TEXT,
+            createdOn TEXT,
+            intrusion_service_id TEXT,
+            intrusion_detail TEXT,
             module_name TEXT,
-            ip TEXT,
+            ip_address TEXT,
             keyword TEXT,
             user TEXT
             )
@@ -179,18 +180,18 @@ class Base:
 
         table_iptables = f'''CREATE TABLE IF NOT EXISTS iptables (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            datetime TEXT,
+            createOn TEXT,
             module_name TEXT,
-            ip TEXT,
+            ip_address TEXT,
             duration INTEGER
             )
         '''
 
         table_iptables_logs = f'''CREATE TABLE IF NOT EXISTS iptables_logs (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            datetime TEXT,
+            createdOn TEXT,
             module_name TEXT,
-            ip TEXT,
+            ip_address TEXT,
             duration INTEGER
             )
         '''
@@ -201,7 +202,7 @@ class Base:
 
         return None
 
-    def db_record_ip(self, service_id:str, module_name:str, ip:str, keyword:str, user:str) -> int:
+    def db_record_ip(self, service_id:str, intrusion_detail:str, module_name:str, ip:str, keyword:str, user:str) -> int:
         """Record an ip into the logs table
 
         Args:
@@ -214,12 +215,13 @@ class Base:
         Returns:
             int: The number of rows affected
         """
-        query = '''INSERT INTO logs (datetime, service_id, module_name, ip, keyword, user) 
-                VALUES (:datetime,:service_id, :module_name, :ip, :keyword, :user)
+        query = '''INSERT INTO logs (createdOn, intrusion_service_id, intrusion_detail, module_name, ip_address, keyword, user) 
+                VALUES (:datetime,:intrusion_service_id, :intrusion_detail, :module_name, :ip, :keyword, :user)
                 '''
         mes_donnees = {
                         'datetime': self.get_sdatetime(),
-                        'service_id': service_id,
+                        'intrusion_service_id': service_id,
+                        'intrusion_detail': intrusion_detail,
                         'module_name':module_name,
                         'ip': ip,
                         'keyword':keyword,
@@ -241,7 +243,7 @@ class Base:
         Returns:
             int: The number of rows affected
         """
-        query = '''INSERT INTO iptables (datetime, module_name, ip, duration) 
+        query = '''INSERT INTO iptables (createdOn, module_name, ip_address, duration) 
                 VALUES (:datetime, :module_name, :ip, :duration)
                 '''
         mes_donnees = {
@@ -265,7 +267,7 @@ class Base:
         Returns:
             int: The number of rows affected
         """
-        query = '''INSERT INTO iptables_logs (datetime, module_name, ip, duration) 
+        query = '''INSERT INTO iptables_logs (createdOn, module_name, ip_address, duration) 
                 VALUES (:datetime, :module_name, :ip, :duration)
                 '''
         mes_donnees = {
@@ -288,7 +290,7 @@ class Base:
         Returns:
             int: The number of rows affected
         """
-        query = '''DELETE FROM iptables WHERE ip = :ip'''
+        query = '''DELETE FROM iptables WHERE ip_address = :ip'''
 
         mes_donnees = {'ip': ip}
 
@@ -382,7 +384,7 @@ class Base:
         """Clean iptables db table and iptables
         release remote ip address when the duration is expired
         """
-        query = f'''SELECT ip, datetime, duration, module_name 
+        query = f'''SELECT ip_address, createdOn, duration, module_name 
                     FROM iptables
                 '''
 
@@ -403,12 +405,12 @@ class Base:
         """Clean logs that they have more than 24 hours
         """
         response = False
-        query = "DELETE FROM logs WHERE ip = :ip"
+        query = "DELETE FROM logs WHERE ip_address = :ip"
         mes_donnees = {'ip': self.default_ipv4}
         default_ip_request = self.db_execute_query(query,mes_donnees)
 
-        query = '''DELETE FROM logs WHERE datetime <= :datetime'''
-        mes_donnees = {'datetime':self.minus_one_hour(24)}
+        query = '''DELETE FROM logs WHERE createdOn <= :datetime'''
+        mes_donnees = {'datetime': self.minus_one_hour(24)}
         r_datetime = self.db_execute_query(query, mes_donnees)
 
         affected_rows = r_datetime.rowcount
@@ -462,181 +464,6 @@ class Base:
             response = True
 
         return response
-
-    def check_endpoint_abuseipdb(self, parsed_api:dict, ip_to_check:str) -> Union[dict, None]:
-
-        api_name = 'abuseipdb'
-
-        if not api_name in parsed_api:
-            return None
-        elif not self.abuseipdb_status:
-            return None
-        elif ip_to_check == self.default_ipv4:
-            return None
-
-        api_url = parsed_api[api_name]['url']
-        api_key = parsed_api[api_name]['api_key']
-
-        if api_key == '' or api_url == '':
-            self.log_print('AbuseIPDB - API Key or API ENDPOINT Error : empty','red')
-            return None
-
-        # Defining the api-endpoint
-        url = f'{api_url}check'
-
-        querystring = {
-            'ipAddress': ip_to_check,
-            'maxAgeInDays': '90'
-        }
-
-        headers = {
-            'Accept': 'application/json',
-            'Key': api_key
-        }
-        try:
-            response = requests.request(method='GET', url=url, headers=headers, params=querystring, timeout=5)
-
-            # Formatted output
-            req = json.loads(response.text)
-            # req = json.dumps(decodedResponse, sort_keys=True, indent=4)
-            if 'errors' in req:
-                self.log_print(f'API Error : {req["errors"][0]["detail"]}','red')
-                return None
-
-            ip = req['data']['ipAddress']
-            country = req['data']['countryCode']
-            isTor = req['data']['isTor']
-            totalReports = req['data']['totalReports']
-            score = req['data']['abuseConfidenceScore']
-
-            mes_donnees = {'datetime': self.get_sdatetime(), 'country_code': country,'ip': ip,'isTor':isTor,'totalReports': totalReports,'score': score}
-            r = self.db_execute_query('INSERT INTO abuseipdb (datetime, country_code, ip, isTor, totalReports, score) VALUES (:datetime,:country_code, :ip, :isTor, :totalReports, :score)', mes_donnees)
-            if r.rowcount > 0:
-                self.log_print(f'AbuseIPDB - new ip recorded : IP: "{ip}" - Score: {score}','green')
-            resp:dict = dict(req)
-            return resp
-
-        except KeyError as ke:
-            self.log_print(f'API Error KeyError : {ke}','red')
-        except requests.ReadTimeout as timeout:
-            self.log_print(f'API Error Timeout : {timeout}','red')
-        except requests.ConnectionError as ConnexionError:
-            self.log_print(f'API Connection Error : {ConnexionError}','red')
-
-    def get_local_abuseipdb_score(self, ip_address:str) -> tuple[int, int, int]:
-        """Return local information stored in the database
-        abuseipdb table already contain some fetched ip
-
-        Args:
-            ip_address (str): Ip to analyse
-
-        Returns:
-            tuple[int, int, int]: isTor, totalReports, score
-        """
-        response:tuple = ()
-        query = 'SELECT isTor, totalReports, score FROM abuseipdb WHERE ip = :ip'
-        mes_donnees = {'ip': ip_address}
-
-        res_sql = self.db_execute_query(query, mes_donnees)
-
-        fetch_result = res_sql.fetchone()        
-
-        if not fetch_result is None:
-            isTor = int(fetch_result.isTor)
-            totalReports = int(fetch_result.totalReports)
-            score = int(fetch_result.score)
-
-            response = (isTor, totalReports, score)       
-
-        return response
-
-    def report_to_abuseipdb(self, ip_address:str, attack_datetime:str, category:list, comment:str) -> None:
-        """_summary_
-
-        Args:
-            ip_address (str): _description_
-            attack_datetime (str): _description_
-            category (list): _description_
-            comment (str): _description_
-
-        Returns:
-            _type_: _description_
-        """
-        try:
-
-            api_name        = 'abuseipdb'
-
-            if not api_name in self.abuseipdb_config:
-                return None
-            elif not self.abuseipdb_status:
-                return None
-            elif ip_address == self.default_ipv4:
-                return None
-
-            api_url         = self.abuseipdb_config[api_name]['url']
-            api_key         = self.abuseipdb_config[api_name]['api_key']
-
-            if api_url == '' or api_key == '':
-                self.log_print('AbuseIPDB - API Key or API ENDPOINT Error : empty','red')
-                return None
-
-            # Create category section
-            category_ = ''
-            count = 0
-            for cat in category:
-                count += 1
-                category_ += f'{cat}'
-                if count < len(category):
-                    category_ += ','
-
-            # Defining the api-endpoint
-            url = f'{api_url}report'
-
-            converted_attack_datetime = datetime.strptime(attack_datetime, self.DATE_FORMAT)
-            current_timezone = converted_attack_datetime.astimezone().tzinfo
-            converted_attack_datetime = converted_attack_datetime.replace(tzinfo=current_timezone)
-            timestamp_attack_datetime = converted_attack_datetime.isoformat()
-
-            # String holding parameters to pass in json format
-            params = {
-                'ip':ip_address,
-                'categories':category_,
-                'comment':comment,
-                'timestamp':timestamp_attack_datetime
-            }
-
-            headers = {
-                'Accept': 'application/json',
-                'Key': api_key
-            }
-
-            with requests.request(method='POST', url=url, headers=headers, params=params, timeout=2) as response:
-
-                req = json.loads(response.text)
-                if 'errors' in req:
-                    self.log_print(f'API Error : {req["errors"]}','red')
-                    return None
-
-                abuseipdb_ipAddress = req['data']['ipAddress']
-                abuseipdb_score     = req['data']['abuseConfidenceScore']
-
-                query_reported_abuseipdb = '''INSERT INTO reported_abuseipdb (datetime, reported_datetime, ip, category, comment) 
-                                            VALUES 
-                                            (:datetime, :reported_datetime, :ip, :category, :comment)
-                                            '''
-                mes_donnees = {'datetime': self.get_sdatetime(), 'reported_datetime': attack_datetime,'ip': ip_address, 'category':category_,'comment': comment}
-                r = self.db_execute_query(query_reported_abuseipdb, mes_donnees)
-                if r.rowcount > 0:
-                    self.log_print(f'AbuseIPDB - REPORT SENT - IP: {abuseipdb_ipAddress} | Updated score : {str(abuseipdb_score)}','green')
-
-            return None
-
-        except KeyError as ke:
-            self.log_print(f'API Error KeyError : {ke}','red')
-        except requests.ReadTimeout as timeout:
-            self.log_print(f'API Error Timeout : {timeout}','red')
-        except requests.ConnectionError as ConnexionError:
-            self.log_print(f'API Connection Error : {ConnexionError}','red')
 
     def get_information_from_HQ(self, ip_address: str) -> Union[dict, None]:
 

@@ -9,7 +9,7 @@ class Intercept:
     __PATTERN_IPV6 = r'([0-9a-fA-F]{1,4}(?::[0-9a-fA-F]{1,4}){7})'
 
     def __init__(self, base: base.Base, parser: parser.Parser, subprocess:Popen, subprocess_detail:dict) -> None:
-        
+
         self.Base                       = base                              # Création d'une instance Base()
         self.Parser                     = parser                            # Création d'une instance Parser()
         self.subprocess                 = subprocess                        # Get the source of the log
@@ -80,7 +80,7 @@ class Intercept:
                                 hq_response = self.Base.get_information_from_HQ(ip)
                                 # print(hq_response)
 
-                                if self.Base.db_record_ip(service_id, mod_name, ip, filter_name, user) > 0:
+                                if self.Base.db_record_ip(service_id, output, mod_name, ip, filter_name, user) > 0:
                                     self.Base.log_print(f'{mod_name} - {filter_name} - {service_id} - {ip} - {user} - recorded', 'white')
 
                                     if not hq_response is None and not hq_response['error']:
@@ -107,10 +107,10 @@ class Intercept:
         try:
             # for mod_name in self.Parser.module_names:
             if self.subprocess_detail[mod_name] == self.subprocess:
-                query = f'''SELECT a.ip as "ip_address", count(DISTINCT(a.service_id)) as "NoAction" 
+                query = f'''SELECT a.ip_address, count(DISTINCT(a.intrusion_service_id)) as "attempt" 
                             FROM logs as a 
-                            WHERE a.module_name = :module_name and a.ip = :ip
-                            GROUP BY a.ip
+                            WHERE a.module_name = :module_name and a.ip_address = :ip
+                            GROUP BY a.ip_address
                         '''
                 mes_donnees = {'module_name': mod_name, 'ip': received_ip}
 
