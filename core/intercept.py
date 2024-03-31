@@ -84,7 +84,7 @@ class Intercept:
                                 if self.Base.db_record_ip(service_id, output, mod_name, ip, filter_name, user):
                                     self.Base.log_print(f'{mod_name} - {filter_name} - {service_id} - {ip} - {user} - recorded', 'white')
 
-                                    if not ab_score is None and not hq_totalReports is None:
+                                    if not ab_score is None or not hq_totalReports is None:
                                         ab_score = ab_score if not ab_score is None else 0
                                         hq_totalReports = hq_totalReports if not hq_totalReports is None else 0
 
