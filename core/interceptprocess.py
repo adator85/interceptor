@@ -51,7 +51,7 @@ class InterceptProcess:
             return process
 
         if not os.path.exists(logs_source):
-            self.Base.log_print(f'{self._create_subprocess.__name__} - {logs_source} - no such directory or file','red')
+            self.Base.logs.critical(f'{self._create_subprocess.__name__} - {logs_source} - no such directory or file')
             return None
 
         process = Popen(['tail', '-f','-n', '0', logs_source], stdout=PIPE, stderr=PIPE)
@@ -77,5 +77,4 @@ class InterceptProcess:
             output = subprocess.stdout.readline().decode('utf-8').strip()
             if output:
                 Intercept.run_process(output)
-                if self.Base.DEBUG:
-                    print(output)
+                self.Base.logs.debug(f'raw: {output}')
