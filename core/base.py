@@ -1,5 +1,5 @@
 from subprocess import run, PIPE
-import os, threading, time, socket, json, requests
+import os, threading, time, socket, json, requests, logging
 from datetime import datetime, timedelta
 from sqlalchemy import create_engine, Engine, Connection, CursorResult
 from sqlalchemy.sql import text
@@ -26,7 +26,7 @@ class Base:
 
     def __init__(self) -> None:
 
-        self.VERSION                = '2.2.0'                                   # MAJOR.MINOR.BATCH
+        self.VERSION                = '2.4.0'                                   # MAJOR.MINOR.BATCH
         self.CURRENT_PYTHON_VERSION = python_version()                          # Current python version
         self.DATE_FORMAT            = '%Y-%m-%d %H:%M:%S'                       # The date format
         self.HOSTNAME               = socket.gethostname()                      # Hostname of the local machine
@@ -50,9 +50,28 @@ class Base:
         self.hb_active:bool = True                                              # Define heartbeat variable
         self.running_threads:list[threading.Thread] = []                        # Define running_threads variable
 
-        self.logs_init()                                                        # Init logs directory and log file.
+        self.init_log_system()                                                  # Init log system
         self.engine, self.cursor = self.db_init()                               # Init Engine & Cursor
         self.__db_create_tables()                                               # Create tables
+
+        self.logs.debug(f"Module Base Initiated")
+
+        return None
+
+    def init_log_system(self) -> None:
+
+        # Create folder if not available
+        logs_directory = f'logs{os.sep}'
+        if not os.path.exists(f'{logs_directory}'):
+            os.makedirs(logs_directory)
+
+        # Init logs object
+        self.logs = logging
+        self.logs.basicConfig(level=logging.DEBUG,
+                              filename='logs/interceptor_v2.log',
+                              format='%(asctime)s - %(levelname)s - %(filename)s - %(funcName)s - %(message)s')
+
+        self.logs.debug("-" * 16)
 
         return None
 
@@ -159,6 +178,8 @@ class Base:
         engine = create_engine(f'sqlite:///{db_full_path}', echo=False)
         cursor = engine.connect()
 
+        self.logs.debug("Connexion to database ok")
+
         return engine, cursor
 
     def db_execute_query(self, query:str, params:dict = {}) -> CursorResult:
@@ -230,11 +251,15 @@ class Base:
             id_log INTEGER
         )'''
 
-        self.db_execute_query(table_logs)
-        self.db_execute_query(table_iptables)
-        self.db_execute_query(table_iptables_logs)
-        self.db_execute_query(table_hq_information)
-        self.db_execute_query(table_hq_information_to_report)
+        a = self.db_execute_query(table_logs)
+        b = self.db_execute_query(table_iptables)
+        c = self.db_execute_query(table_iptables_logs)
+        d = self.db_execute_query(table_hq_information)
+        e = self.db_execute_query(table_hq_information_to_report)
+
+        creation = a.rowcount + b.rowcount + c.rowcount + d.rowcount + e.rowcount
+        if creation > 0:
+            self.logs.debug("Table creation OK")
 
         return None
 
@@ -284,6 +309,8 @@ class Base:
 
         if (row_affeced_hq + row_affected_logs) > 0:
             response = True
+
+        self.logs.info(f'{module_name} - {keyword} - {service_id} - {ip} - {user} - recorded')
 
         return response
 
@@ -378,19 +405,6 @@ class Base:
 
         return r.rowcount
 
-    def logs_init(self) -> None:
-        """Create logs directory if not available
-        """
-        logs_directory = f'logs{os.sep}'
-        logs_full_path = f'{logs_directory}intercept.log'
-
-        if not os.path.exists(f'{logs_directory}'):
-            os.makedirs(logs_directory)
-            with open(logs_full_path, 'a+') as log:
-                log.write(f'{self.get_sdatetime()} - Interceptor Init logs\n')
-
-        return None
-
     def log_print(self, string:str, color:str = None) -> None:
         """Print logs in the terminal and record it in a file
 
@@ -429,10 +443,10 @@ class Base:
             th.start()
 
             self.running_threads.append(th)
-            self.log_print(f"Thread ID : {str(th.ident)} | Thread name : {th.getName()} | Function name: {str(func_name)} | Running Threads : {len(threading.enumerate())}", "green")
+            self.logs.info(f"Thread ID : {str(th.ident)} | Thread name : {th.getName()} | Function name: {str(func_name)} | Running Threads : {len(threading.enumerate())}")
 
         except AssertionError as ae:
-            self.log_print(f'Assertion Error -> {ae}', 'red')
+            self.logs.critical(f"Assertion Error -> {ae}")
 
     def heartbeat(self, beat:float) -> None:
         """Run periodic action every {beat} seconds
@@ -444,6 +458,7 @@ class Base:
         while self.hb_active:
             time.sleep(beat)
             self.clean_iptables()
+            self.logs.debug(f"Running Heartbeat every {beat} seconds")
 
         return None
 
@@ -479,7 +494,7 @@ class Base:
             if self.get_datetime() > dtime_final:
                 self.db_remove_iptables(db_ip)
                 self.ip_tables_remove(db_ip)
-                self.log_print(f'{db_module_name} - "{db_ip}" - released from jail', 'green')
+                self.logs.info(f'{db_module_name} - "{db_ip}" - released from jail')
 
     def clean_db_logs(self) -> bool:
         """Clean logs that they have more than 24 hours
@@ -498,7 +513,7 @@ class Base:
         affected = affected_rows + affected_rows_default_ipv4
 
         if affected > 0:
-            self.log_print(f'clean_db_logs - Deleted : Logs {str(affected_rows)} - Default ip {affected_rows_default_ipv4}','green')
+            self.logs.info(f'clean_db_logs - Deleted : Logs {str(affected_rows)} - Default ip {affected_rows_default_ipv4}')
             response = True
 
         return response
@@ -524,6 +539,7 @@ class Base:
 
         system_command = '/sbin/iptables -F'
         os.system(system_command)
+        self.logs.info("iptables has been cleared")
         return None
 
     def ip_tables_isExist(self, ip:str) -> bool:
@@ -676,25 +692,25 @@ class Base:
 
             if 'code' in req:
                 if not req['error']:
-                    if self.DEBUG:
-                        self.log_print(f"INTC_HQ RECEIVE INFORMATION - {ip_address} --> {str(req['code'])} {req['message']}", "green")
+                    self.logs.info(f"INTC_HQ RECEIVE INFORMATION - {ip_address} --> {str(req['code'])} {req['message']}")
                 else:
-                    self.log_print(f"INTC_HQ RECEIVE INFORMATION - {ip_address} --> {str(req['code'])} {req['message']}", "red")
+                    self.logs.warn(f"INTC_HQ RECEIVE INFORMATION - {ip_address} --> {str(req['code'])} {req['message']}")
 
+            self.logs.debug(f"RECIEVED FROM HQ - {req}")
             return req
 
         except KeyError as ke:
-            self.log_print(f'API Error KeyError : {ke}','red')
+            self.logs.critical(f'API Error KeyError : {ke}')
             return None
         except TypeError as te:
-            self.log_print(f'API Error TypeError : {te}','red')
+            self.logs.critical(f'API Error TypeError : {te}')
             return None
         except requests.ReadTimeout as timeout:
-            self.log_print(f'API Error Timeout : {timeout}','red')
+            self.logs.critical(f'API Error Timeout : {timeout}')
             return None
         except requests.ConnectionError as ConnexionError:
             if self.DEBUG:
-                self.log_print(f'API Connection Error : {ConnexionError}','red')
+                self.logs.critical(f'API Connection Error : {ConnexionError}')
             return None
 
     def report_to_HQ(self, intrusion_datetime:str, intrusion_detail:str, ip_address:str, intrusion_service_id:str, module_name:str, keyword:str) -> bool:
@@ -741,23 +757,22 @@ class Base:
 
             if 'code' in req:
                 if req['code'] == 200:
-                    if self.DEBUG:
-                        self.log_print(f"INTC_HQ REPORTED - {ip_address} --> {str(req['code'])} {req['message']}", "green")
+                    self.logs.info(f"INTC_HQ REPORTED - {ip_address} --> {str(req['code'])} {req['message']}")
                 else:
-                    self.log_print(f"INTC_HQ RESPONSE - {ip_address} - {str(req['code'])} {req['message']}", "red")
+                    self.logs.warn(f"INTC_HQ RESPONSE - {ip_address} - {str(req['code'])} {req['message']}")
 
+            self.logs.debug(f"RECIEVED FROM HQ : {req}")
             return True
 
         except KeyError as ke:
-            self.log_print(f'API Error KeyError : {ke}','red')
+            self.logs.critical(f'API Error KeyError : {ke}')
             return False
         except TypeError as te:
-            self.log_print(f'API Error TypeError : {te}','red')
+            self.logs.critical(f'API Error TypeError : {te}')
             return False
         except requests.ReadTimeout as timeout:
-            self.log_print(f'API Error Timeout : {timeout}','red')
+            self.logs.critical(f'API Error Timeout : {timeout}')
             return False
         except requests.ConnectionError as ConnexionError:
-            if self.DEBUG:
-                self.log_print(f'API Connection Error : {ConnexionError}','red')
+            self.logs.critical(f'API Connection Error : {ConnexionError}')
             return False

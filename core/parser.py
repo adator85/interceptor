@@ -24,7 +24,7 @@ class Parser:
 
         if self.errors:
             for error in self.errors:
-                self.Base.log_print(error,'red')
+                self.Base.logs.critical(f"Configuration Structure error - {error}")
 
         return None
 
@@ -62,6 +62,11 @@ class Parser:
                     if 'jail_duration' in self.global_api[key_exception]:
                         self.Base.default_intcHQ_jail_duration = self.global_api[key_exception]['jail_duration']
 
+        self.Base.logs.debug(f"Global configuration file : {self.global_configuration}")
+        self.Base.logs.debug(f"Global IP Exceptions : {self.global_ip_exceptions}")
+        self.Base.logs.debug(f"Global API : {self.Base.api}")
+        self.Base.logs.debug(f"Global API 2 : {self.global_api}")
+
         return None
 
     def load_json_configuration(self) -> int:
@@ -82,9 +87,13 @@ class Parser:
                     json_data = json.load(f)
                     if self.check_json_structure(json_data, file):
                         self.load_modules(json_data)
+                        self.Base.logs.debug(f"{file} : {json_data}")
                         no_files += 1
                     else:
                         self.filenames.remove(file)
+
+        self.Base.logs.debug(f"Local modules files loaded : {self.filenames}")
+        self.Base.logs.debug(f"Module loaded : {self.modules}")
 
         return no_files
 
@@ -94,8 +103,9 @@ class Parser:
             self.modules[json_data['module_name']] = json_data
 
             return None
+
         except KeyError as ke:
-            self.Base.log_print(f'"{self.load_modules.__name__}" Key Error detected - {ke}','red')
+            self.Base.logs.critical(f'"{self.load_modules.__name__}" Key Error detected - {ke}')
 
     def parse_json(self) -> None:
 
@@ -103,6 +113,7 @@ class Parser:
         for module_name in self.modules:
             self.module_names.append(module_name)
 
+        self.Base.logs.debug(f"self.module_names : {self.module_names}")
         return None
 
     def check_json_structure(self, json_data:dict, filename:str) -> bool:

@@ -22,7 +22,7 @@ def main():
 
     finally:
         for subprocess in IProcInstance.subprocess:
-            print(f'Terminate subprocess {subprocess}')
+            BaseInstance.logs.debug(f'Terminate subprocess {subprocess}')
             subprocess.terminate()
 
 if __name__ == "__main__":
