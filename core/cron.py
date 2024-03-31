@@ -31,6 +31,6 @@ class Cron:
         timer = timer_seconds
 
         while True:
-            self.Base.logs.debug(f'CRON - "{func.__name__}" - starting new job - next scheduled job in {str(timer)} Seconds')
+            self.Base.logs.debug(f'"{func.__name__}" - Running Cron Every {str(timer)} Seconds')
             func()
             time.sleep(timer)
