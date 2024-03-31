@@ -2,16 +2,16 @@
     "module_name": "sshd",
     "rgx_service_name": "(sshd\\[\\d*\\])",
     "rgx_service_id": "^.*sshd\\[(\\d*)\\].*$",
-    
+
     "filters": {
         "auth_failure": "^.*(authentication failure).*$",
         "invalid_user": "^.*(Invalid user).*$",
         "failed_password": "^.*(Failed password).*$",
         "negociation_failed": ".*(Unable to negotiate).*(no matching key exchange method found).*$"
     },
-    
+
     "ip_exceptions": ["192.168.1.11","192.168.1.12"],
-    
+
     "actions": {
         "attempt": 4,
         "jail_duration": 30

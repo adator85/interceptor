@@ -26,13 +26,13 @@ class Base:
 
     def __init__(self) -> None:
 
-        self.VERSION                = '2.1.0'                                   # MAJOR.MINOR.BATCH
+        self.VERSION                = '2.2.0'                                   # MAJOR.MINOR.BATCH
         self.CURRENT_PYTHON_VERSION = python_version()                          # Current python version
         self.DATE_FORMAT            = '%Y-%m-%d %H:%M:%S'                       # The date format
         self.HOSTNAME               = socket.gethostname()                      # Hostname of the local machine
         self.IPV4                   = socket.gethostbyname(self.HOSTNAME)       # Local ipv4 of the local machine
         self.PULSE                  = 5                                         # Pulse in seconds
-        self.DEBUG                  = False                                     # Debug variable pour afficher les outputs
+        self.DEBUG                  = True                                      # Debug variable pour afficher les outputs
         self.default_attempt        = 4                                         # Default attempt before jail
         self.default_jail_duration  = 120                                       # Default Duration in seconds before the release
         self.default_ipv4           = '0.0.0.0'                                 # Default ipv4 to be used by Interceptor
@@ -41,7 +41,7 @@ class Base:
 
         self.default_intcHQ_active    = False                                   # Use head quarter information
         self.default_intcHQ_report    = False                                   # Report to the HQ intrusions
-        self.default_intcHQ_timeout   = 5                                       # HQ Timeout
+        self.default_intcHQ_timeout   = 30                                      # HQ Timeout
         self.default_intcHQ_jail_totalReports = 10                              # HQ jail the customer where total reports is greather than default total reports
         self.default_intcHQ_jail_abuseipdb_score = 100                          # Default score for the jail if not set in the configuration
         self.default_intcHQ_jail_duration = 600                                 # Default HQ duration jail
@@ -94,6 +94,24 @@ class Base:
         conveted_datetime = datetime.strptime(datetime_text, self.DATE_FORMAT)
 
         return conveted_datetime
+
+    def convert_to_integer(self, value):
+        """Convertit la valeur reçue en entier, si possible.
+        Sinon elle retourne la valeur initiale.
+
+        Args:
+            value (any): la valeur à convertir
+
+        Returns:
+            any: Retour un entier, si possible. Sinon la valeur initiale.
+        """
+        try:
+            response = int(value)
+            return response
+        except ValueError:
+            return value
+        except TypeError:
+            return value
 
     def minus_one_hour(self, hours:float) -> str:
         """Deduct hours from the current datetime
@@ -180,7 +198,7 @@ class Base:
 
         table_iptables = f'''CREATE TABLE IF NOT EXISTS iptables (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            createOn TEXT,
+            createdOn TEXT,
             module_name TEXT,
             ip_address TEXT,
             duration INTEGER
@@ -196,13 +214,31 @@ class Base:
             )
         '''
 
+        table_hq_information = f'''CREATE TABLE IF NOT EXISTS hq_information (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            createdOn TEXT,
+            updatedOn TEXT,
+            ip_address TEXT,
+            ab_score INTEGER,
+            hq_totalReports INTEGER
+            )
+        '''
+
+        table_hq_information_to_report = f'''CREATE TABLE IF NOT EXISTS hq_information_to_report (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            createdOn TEXT,
+            id_log INTEGER
+        )'''
+
         self.db_execute_query(table_logs)
         self.db_execute_query(table_iptables)
         self.db_execute_query(table_iptables_logs)
+        self.db_execute_query(table_hq_information)
+        self.db_execute_query(table_hq_information_to_report)
 
         return None
 
-    def db_record_ip(self, service_id:str, intrusion_detail:str, module_name:str, ip:str, keyword:str, user:str) -> int:
+    def db_record_ip(self, service_id:str, intrusion_detail:str, module_name:str, ip:str, keyword:str, user:str) -> bool:
         """Record an ip into the logs table
 
         Args:
@@ -215,11 +251,13 @@ class Base:
         Returns:
             int: The number of rows affected
         """
+        response = False
+        current_datetime = self.get_sdatetime()
         query = '''INSERT INTO logs (createdOn, intrusion_service_id, intrusion_detail, module_name, ip_address, keyword, user) 
-                VALUES (:datetime,:intrusion_service_id, :intrusion_detail, :module_name, :ip, :keyword, :user)
+                VALUES (:datetime, :intrusion_service_id, :intrusion_detail, :module_name, :ip, :keyword, :user)
                 '''
         mes_donnees = {
-                        'datetime': self.get_sdatetime(),
+                        'datetime': current_datetime,
                         'intrusion_service_id': service_id,
                         'intrusion_detail': intrusion_detail,
                         'module_name':module_name,
@@ -229,8 +267,50 @@ class Base:
                         }
 
         r = self.db_execute_query(query, mes_donnees)
+        row_affected_logs = r.rowcount
+        lastLogId = r.lastrowid
 
-        return r.rowcount
+        query_hq_info_to_report = 'INSERT INTO hq_information_to_report (createdOn, id_log) VALUES (:createdOn, :id_log)'
+        lastLogId = lastLogId if type(self.convert_to_integer(lastLogId)) == int else 0
+        query_data = {
+            'createdOn': current_datetime,
+            'id_log': lastLogId
+        }
+
+        row_affeced_hq = 0
+        if lastLogId > 0:
+            c = self.db_execute_query(query_hq_info_to_report, query_data)
+            row_affeced_hq = c.rowcount
+
+        if (row_affeced_hq + row_affected_logs) > 0:
+            response = True
+
+        return response
+
+    def db_record_hq_information(self, ip_address:str, ab_score:int, hq_totalReports:int) -> bool:
+
+        response = False
+        createdOn = self.get_sdatetime()
+        ab_score:int = ab_score if type(self.convert_to_integer(ab_score)) == int else 0
+        hq_totalReports:int = hq_totalReports if type(self.convert_to_integer(hq_totalReports)) == int else 0
+
+        query = """INSERT INTO hq_information (createdOn, ip_address, ab_score, hq_totalReports) 
+        VALUES (:createdOn, :ip_address, :ab_score, :hq_totalReports)
+        """
+
+        query_data = {
+            'createdOn': createdOn,
+            'ip_address': ip_address,
+            'ab_score': ab_score,
+            'hq_totalReports': hq_totalReports
+        }
+
+        r = self.db_execute_query(query, query_data)
+
+        if r.rowcount > 0:
+            response = True
+
+        return response
 
     def db_record_iptables(self, module_name:str, ip:str, duration:int) -> int:
         """Record the remote ip address into the iptables table
@@ -465,6 +545,101 @@ class Base:
 
         return response
 
+    def get_internal_hq_info(self, ip_address:str) -> Union[tuple[int, int], tuple[None, None]]:
+        """Fetch local database to retrieve ab_score and hq_totalReports
+
+        Args:
+            ip_address (str): remote ip address
+
+        Returns:
+            Union[tuple[int, int], None]: (ab_score, hq_totalReports) or None
+        """
+        query = 'SELECT ab_score, hq_totalReports FROM hq_information WHERE ip_address = :ip_address'
+        param_query = {'ip_address': ip_address}
+
+        fetch_query = self.db_execute_query(query, param_query)
+        result_query = fetch_query.fetchone()
+
+        if not result_query is None:
+            ab_score, hq_totalReports = result_query
+            return ab_score, hq_totalReports
+        else:
+            return None, None
+
+    def thread_report_to_HQ(self) -> None:
+        """### 1. Get data from local database
+        ### 2. Send it to HQ every 1.5 seconds
+        ### 3. Check whether the ip is in the table hq_information
+        ###     3.1 Record the ip and the information received from HQ (if no record available)
+        ###     3.2 Edit the information if the record is available
+        ### 4. Delete the record from the local database
+        """
+        current_date = self.get_sdatetime()
+
+        query_hq_info_to_report = '''SELECT 
+                        l.id as 'id_log',
+                        l.createdOn as 'log_createdOn',
+                        l.intrusion_service_id,
+                        l.intrusion_detail,
+                        l.module_name,
+                        l.ip_address,
+                        l.keyword
+                    FROM hq_information_to_report hir
+                    LEFT JOIN logs l ON l.id = hir.id_log
+                    '''
+
+        query_get_hq_info_select = 'SELECT id FROM hq_information WHERE ip_address = :ip_address'
+        query_get_hq_info_insert = '''INSERT INTO hq_information (createdOn, updatedOn, ip_address, ab_score, hq_totalReports) 
+        VALUES (:createdOn, :updatedOn, :ip_address, :ab_score, :hq_totalReports)
+        '''
+        query_get_hq_info_update = 'UPDATE hq_information SET ab_score = :ab_score, hq_totalReports = :hq_totalReports, updatedOn = :updatedOn WHERE ip_address = :ip_address'
+        query_delete = 'DELETE FROM hq_information_to_report WHERE id_log = :id_to_delete'
+
+        fetch_query = self.db_execute_query(query_hq_info_to_report)
+
+        result_query = fetch_query.fetchall()
+        if not result_query:
+            return None
+
+        for result in result_query:
+            db_id_log, intrusion_date, intrusion_service_id, intrustion_detail, db_mod_name, db_ip_address, db_keyword = result
+
+            # Report the information to HQ
+            report_status = self.report_to_HQ(intrusion_date, intrustion_detail, db_ip_address, intrusion_service_id, db_mod_name, db_keyword)
+
+            if not report_status:
+                continue
+
+            # Delete the record from local db
+            query_data = {'id_to_delete': db_id_log}
+            self.db_execute_query(query_delete, query_data)
+
+            # Get ip_address information from HQ
+            hq_response = self.get_information_from_HQ(db_ip_address)
+
+            if not hq_response is None:
+                ab_score:int = hq_response['abuseipdb_score'] if type(self.convert_to_integer(hq_response['abuseipdb_score'])) == int else 0
+                hq_totalReports:int = hq_response['hq_totalReports'] if type(self.convert_to_integer(hq_response['hq_totalReports'])) == int else 0
+
+                # Check if ip is available locally
+                param_get_hq_info_select = {'ip_address': db_ip_address}
+                fetch_is_ip_available = self.db_execute_query(query_get_hq_info_select, param_get_hq_info_select)
+                result_is_ip_available = fetch_is_ip_available.fetchone()
+
+                # if ip not available then record it
+                if result_is_ip_available is None:
+                    param_get_hq_info_insert = {'createdOn': current_date, 'updatedOn': current_date, 'ip_address': db_ip_address, 'ab_score': ab_score, 'hq_totalReports': hq_totalReports}
+                    self.db_execute_query(query_get_hq_info_insert, param_get_hq_info_insert)
+
+                # if ip is available then update the record
+                else:
+                    param_get_hq_info_update = {'ab_score': ab_score, 'hq_totalReports': hq_totalReports, 'updatedOn': current_date, 'ip_address': db_ip_address}
+                    self.db_execute_query(query_get_hq_info_update, param_get_hq_info_update)
+
+            time.sleep(1.5)
+
+        return None
+
     def get_information_from_HQ(self, ip_address: str) -> Union[dict, None]:
 
         try:
@@ -482,7 +657,7 @@ class Base:
             url = f"{self.api[api_name]['url']}check/" if 'url' in self.api[api_name] else None
             api_key = self.api[api_name]['api_key'] if 'api_key' in self.api[api_name] else None
 
-            if url is None:
+            if url is None or api_key is None:
                 return None
 
             url = url + ip_address
@@ -522,27 +697,25 @@ class Base:
                 self.log_print(f'API Connection Error : {ConnexionError}','red')
             return None
 
-        return None
-
-    def report_to_HQ(self, intrusion_datetime:str, intrusion_detail:str, ip_address:str, intrusion_service_id:str, module_name:str, keyword:str) -> None:
+    def report_to_HQ(self, intrusion_datetime:str, intrusion_detail:str, ip_address:str, intrusion_service_id:str, module_name:str, keyword:str) -> bool:
 
         try:
             api_name        = 'intc_hq'
 
             if not api_name in self.api:
-                return None
+                return False
             elif not self.api[api_name]['active']:
-                return None
+                return False
             elif not self.api[api_name]['report']:
-                return None
+                return False
             elif ip_address == self.default_ipv4:
-                return None
+                return False
 
             url = f"{self.api[api_name]['url']}report/" if 'url' in self.api[api_name] else None
             api_key = self.api[api_name]['api_key'] if 'api_key' in self.api[api_name] else None
 
             if url is None:
-                return None
+                return False
 
             querystring = {
                 'intrusion_datetime': intrusion_datetime,
@@ -573,16 +746,18 @@ class Base:
                 else:
                     self.log_print(f"INTC_HQ RESPONSE - {ip_address} - {str(req['code'])} {req['message']}", "red")
 
-            return None
+            return True
 
         except KeyError as ke:
             self.log_print(f'API Error KeyError : {ke}','red')
+            return False
         except TypeError as te:
             self.log_print(f'API Error TypeError : {te}','red')
+            return False
         except requests.ReadTimeout as timeout:
             self.log_print(f'API Error Timeout : {timeout}','red')
+            return False
         except requests.ConnectionError as ConnexionError:
             if self.DEBUG:
                 self.log_print(f'API Connection Error : {ConnexionError}','red')
-
-        return None
+            return False
