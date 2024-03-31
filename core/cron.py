@@ -22,7 +22,7 @@ class Cron:
 
         if intc_hq_status and intc_hq_report:
             # Activate thread reporting to HQ
-            pass 
+            self.Base.create_thread(self.cron, func_args=(self.Base.thread_report_to_HQ, 5), func_name='Report to HQ')
 
         return None
 
@@ -35,9 +35,3 @@ class Cron:
                 self.Base.log_print(f'CRON - "{func.__name__}" - starting new job - next scheduled job in {str(timer)} Seconds','green')
             func()
             time.sleep(timer)
-
-    def report_to_HQ_thread(self) -> None:
-
-        query_log = 'SELECT id, datetime, service_id, ip FROM logs'
-
-        return None
