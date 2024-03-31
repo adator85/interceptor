@@ -714,7 +714,7 @@ class Base:
             url = f"{self.api[api_name]['url']}report/" if 'url' in self.api[api_name] else None
             api_key = self.api[api_name]['api_key'] if 'api_key' in self.api[api_name] else None
 
-            if url is None:
+            if url is None and api_key is None:
                 return False
 
             querystring = {
