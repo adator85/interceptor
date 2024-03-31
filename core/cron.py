@@ -23,7 +23,6 @@ class Cron:
         if intc_hq_status and intc_hq_report:
             # Activate thread reporting to HQ
             self.Base.create_thread(self.cron, func_args=(self.Base.thread_report_to_HQ, 60), func_name='Report to HQ')
-            pass 
 
         return None
 
