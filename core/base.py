@@ -702,6 +702,10 @@ class Base:
 
             response = requests.request(method='GET', url=url, headers=headers, timeout=self.default_intcHQ_timeout)
 
+            if response.status_code in [404, 503]:
+                self.logs.warn(f"INTC_HQ CODE {response.status_code}")
+                return None
+
             # Formatted output
             req = json.loads(response.text)
 
@@ -724,8 +728,7 @@ class Base:
             self.logs.critical(f'API Error Timeout : {timeout}')
             return None
         except requests.ConnectionError as ConnexionError:
-            if self.DEBUG:
-                self.logs.critical(f'API Connection Error : {ConnexionError}')
+            self.logs.critical(f'API Connection Error : {ConnexionError}')
             return None
 
     def report_to_HQ(self, intrusion_datetime:str, intrusion_detail:str, ip_address:str, intrusion_service_id:str, module_name:str, keyword:str) -> bool:
@@ -766,6 +769,10 @@ class Base:
             }
 
             response = requests.request(method='POST', url=url, headers=headers, timeout=self.default_intcHQ_timeout, json=querystring)
+
+            if response.status_code in [404, 503]:
+                self.logs.warn(f"INTC_HQ CODE {response.status_code}")
+                return False
 
             # Formatted output
             req = json.loads(response.text)
