@@ -20,11 +20,16 @@ class Parser:
         self.load_json_configuration()
         self.parse_json()
 
+        self.Base.whitelisted_ip = list(set(self.Base.local_whitelisted_ip + self.Base.global_whitelisted_ip))
+        self.Base.logs.debug(f"Global Whitelisted ip : {self.Base.global_whitelisted_ip}")
+        self.Base.logs.debug(f"Local Whitelisted ip : {self.Base.local_whitelisted_ip}")
+        self.Base.logs.debug(f"All Whitelisted ip : {self.Base.whitelisted_ip}")
+
         self.intercept_initialization()
 
         if self.errors:
             for error in self.errors:
-                self.Base.log_print(error,'red')
+                self.Base.logs.critical(f"Configuration Structure error - {error}")
 
         return None
 
@@ -62,6 +67,12 @@ class Parser:
                     if 'jail_duration' in self.global_api[key_exception]:
                         self.Base.default_intcHQ_jail_duration = self.global_api[key_exception]['jail_duration']
 
+        self.Base.logs.debug(f"Global configuration file : {self.global_configuration}")
+        self.Base.logs.debug(f"Global API : {self.Base.api}")
+        self.Base.logs.debug(f"Global API 2 : {self.global_api}")
+
+        self.Base.global_whitelisted_ip = self.global_ip_exceptions.copy()
+
         return None
 
     def load_json_configuration(self) -> int:
@@ -82,9 +93,24 @@ class Parser:
                     json_data = json.load(f)
                     if self.check_json_structure(json_data, file):
                         self.load_modules(json_data)
+                        self.Base.logs.debug(f"{file} : {json_data}")
                         no_files += 1
                     else:
                         self.filenames.remove(file)
+
+        self.Base.logs.debug(f"Local modules files loaded : {self.filenames}")
+        self.Base.logs.debug(f"Module loaded : {self.modules}")
+
+        final_ip_list:list = []
+
+        for mod_name, value in self.modules.items():
+            for key in self.modules[mod_name]:
+                if key == 'ip_exceptions':
+                    if type(self.modules[mod_name][key]) == list:
+                        l = self.modules[mod_name][key]
+                        final_ip_list = list(set(final_ip_list + l))
+
+        self.Base.local_whitelisted_ip = final_ip_list.copy()
 
         return no_files
 
@@ -94,8 +120,9 @@ class Parser:
             self.modules[json_data['module_name']] = json_data
 
             return None
+
         except KeyError as ke:
-            self.Base.log_print(f'"{self.load_modules.__name__}" Key Error detected - {ke}','red')
+            self.Base.logs.critical(f'"{self.load_modules.__name__}" Key Error detected - {ke}')
 
     def parse_json(self) -> None:
 
@@ -103,6 +130,7 @@ class Parser:
         for module_name in self.modules:
             self.module_names.append(module_name)
 
+        self.Base.logs.debug(f"self.module_names : {self.module_names}")
         return None
 
     def check_json_structure(self, json_data:dict, filename:str) -> bool:

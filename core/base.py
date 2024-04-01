@@ -1,5 +1,5 @@
 from subprocess import run, PIPE
-import os, threading, time, socket, json, requests
+import os, threading, time, socket, json, requests, logging
 from datetime import datetime, timedelta
 from sqlalchemy import create_engine, Engine, Connection, CursorResult
 from sqlalchemy.sql import text
@@ -26,16 +26,20 @@ class Base:
 
     def __init__(self) -> None:
 
-        self.VERSION                = '2.2.0'                                   # MAJOR.MINOR.BATCH
+        self.VERSION                = '2.4.1'                                   # MAJOR.MINOR.BATCH
         self.CURRENT_PYTHON_VERSION = python_version()                          # Current python version
         self.DATE_FORMAT            = '%Y-%m-%d %H:%M:%S'                       # The date format
         self.HOSTNAME               = socket.gethostname()                      # Hostname of the local machine
         self.IPV4                   = socket.gethostbyname(self.HOSTNAME)       # Local ipv4 of the local machine
         self.PULSE                  = 5                                         # Pulse in seconds
-        self.DEBUG                  = False                                     # Debug variable pour afficher les outputs
+        self.DEBUG_LEVEL            = logging.INFO                              # Debug variable pour afficher les outputs
         self.default_attempt        = 4                                         # Default attempt before jail
         self.default_jail_duration  = 120                                       # Default Duration in seconds before the release
         self.default_ipv4           = '0.0.0.0'                                 # Default ipv4 to be used by Interceptor
+
+        self.global_whitelisted_ip:list     = []                                # Global Whitelisted ip
+        self.local_whitelisted_ip:list      = []                                # Local whitelisted ip (by modules)
+        self.whitelisted_ip:list            = []                                # All white listed ip (global and local)
 
         self.api:dict               = {}                                        # Available API's configuration from global.json
 
@@ -50,9 +54,28 @@ class Base:
         self.hb_active:bool = True                                              # Define heartbeat variable
         self.running_threads:list[threading.Thread] = []                        # Define running_threads variable
 
-        self.logs_init()                                                        # Init logs directory and log file.
+        self.init_log_system()                                                  # Init log system
         self.engine, self.cursor = self.db_init()                               # Init Engine & Cursor
         self.__db_create_tables()                                               # Create tables
+
+        self.logs.debug(f"Module Base Initiated")
+
+        return None
+
+    def init_log_system(self) -> None:
+
+        # Create folder if not available
+        logs_directory = f'logs{os.sep}'
+        if not os.path.exists(f'{logs_directory}'):
+            os.makedirs(logs_directory)
+
+        # Init logs object
+        self.logs = logging
+        self.logs.basicConfig(level=self.DEBUG_LEVEL,
+                              filename='logs/interceptor_v2.log',
+                              format='%(asctime)s - %(levelname)s - %(filename)s - %(funcName)s - %(message)s')
+
+        self.logs.debug("-" * 16)
 
         return None
 
@@ -159,6 +182,8 @@ class Base:
         engine = create_engine(f'sqlite:///{db_full_path}', echo=False)
         cursor = engine.connect()
 
+        self.logs.debug("Connexion to database ok")
+
         return engine, cursor
 
     def db_execute_query(self, query:str, params:dict = {}) -> CursorResult:
@@ -230,11 +255,15 @@ class Base:
             id_log INTEGER
         )'''
 
-        self.db_execute_query(table_logs)
-        self.db_execute_query(table_iptables)
-        self.db_execute_query(table_iptables_logs)
-        self.db_execute_query(table_hq_information)
-        self.db_execute_query(table_hq_information_to_report)
+        a = self.db_execute_query(table_logs)
+        b = self.db_execute_query(table_iptables)
+        c = self.db_execute_query(table_iptables_logs)
+        d = self.db_execute_query(table_hq_information)
+        e = self.db_execute_query(table_hq_information_to_report)
+
+        creation = a.rowcount + b.rowcount + c.rowcount + d.rowcount + e.rowcount
+        if creation > 0:
+            self.logs.debug("Table creation OK")
 
         return None
 
@@ -284,6 +313,8 @@ class Base:
 
         if (row_affeced_hq + row_affected_logs) > 0:
             response = True
+
+        self.logs.info(f'{module_name} - {keyword} - {service_id} - {ip} - {user} - recorded')
 
         return response
 
@@ -378,19 +409,6 @@ class Base:
 
         return r.rowcount
 
-    def logs_init(self) -> None:
-        """Create logs directory if not available
-        """
-        logs_directory = f'logs{os.sep}'
-        logs_full_path = f'{logs_directory}intercept.log'
-
-        if not os.path.exists(f'{logs_directory}'):
-            os.makedirs(logs_directory)
-            with open(logs_full_path, 'a+') as log:
-                log.write(f'{self.get_sdatetime()} - Interceptor Init logs\n')
-
-        return None
-
     def log_print(self, string:str, color:str = None) -> None:
         """Print logs in the terminal and record it in a file
 
@@ -429,10 +447,10 @@ class Base:
             th.start()
 
             self.running_threads.append(th)
-            self.log_print(f"Thread ID : {str(th.ident)} | Thread name : {th.getName()} | Function name: {str(func_name)} | Running Threads : {len(threading.enumerate())}", "green")
+            self.logs.info(f"Thread ID : {str(th.ident)} | Thread name : {th.getName()} | Function name: {str(func_name)} | Running Threads : {len(threading.enumerate())}")
 
         except AssertionError as ae:
-            self.log_print(f'Assertion Error -> {ae}', 'red')
+            self.logs.critical(f"Assertion Error -> {ae}")
 
     def heartbeat(self, beat:float) -> None:
         """Run periodic action every {beat} seconds
@@ -444,6 +462,7 @@ class Base:
         while self.hb_active:
             time.sleep(beat)
             self.clean_iptables()
+            self.logs.debug(f"Running Heartbeat every {beat} seconds")
 
         return None
 
@@ -479,26 +498,54 @@ class Base:
             if self.get_datetime() > dtime_final:
                 self.db_remove_iptables(db_ip)
                 self.ip_tables_remove(db_ip)
-                self.log_print(f'{db_module_name} - "{db_ip}" - released from jail', 'green')
+                self.logs.info(f'{db_module_name} - "{db_ip}" - released from jail')
 
     def clean_db_logs(self) -> bool:
         """Clean logs that they have more than 24 hours
         """
         response = False
         query = "DELETE FROM logs WHERE ip_address = :ip"
+        query_hq_information = "DELETE FROM hq_information WHERE ip_address = :ip"
         mes_donnees = {'ip': self.default_ipv4}
         default_ip_request = self.db_execute_query(query,mes_donnees)
 
-        query = '''DELETE FROM logs WHERE createdOn <= :datetime'''
+        # Clean whitelisted ip from the database
+        affected_whitelisted_ip = 0
+        for whitelisted_ip in self.whitelisted_ip:
+            my_data = {'ip': whitelisted_ip}
+            whitelisted_fetch = self.db_execute_query(query, my_data)
+            affected_whitelisted_ip += whitelisted_fetch.rowcount
+
+            whitelisted_fetch_hq = self.db_execute_query(query_hq_information, my_data)
+            affected_whitelisted_ip += whitelisted_fetch_hq.rowcount
+
+        query_hq_info_to_report = """SELECT 
+                        hir.id as 'id',
+                        l.ip_address as 'ip_address'
+                    FROM hq_information_to_report hir
+                    LEFT JOIN logs l ON l.id = hir.id_log
+                    WHERE l.id IS NULL
+                    """
+        hq_info_to_report_fetch = self.db_execute_query(query_hq_info_to_report)
+        query_delete = "DELETE FROM hq_information_to_report WHERE id = :id"
+
+        affected_ip_to_report = 0
+        for record in hq_info_to_report_fetch.fetchall():
+            db_id, db_ip_address = record
+            if db_ip_address is None:
+                r_delete_to_report = self.db_execute_query(query_delete, {'id': db_id})
+                affected_ip_to_report += r_delete_to_report.rowcount
+
+        query = 'DELETE FROM logs WHERE createdOn <= :datetime'
         mes_donnees = {'datetime': self.minus_one_hour(24)}
         r_datetime = self.db_execute_query(query, mes_donnees)
 
         affected_rows = r_datetime.rowcount
         affected_rows_default_ipv4 = default_ip_request.rowcount
-        affected = affected_rows + affected_rows_default_ipv4
+        affected = affected_rows + affected_rows_default_ipv4 + affected_whitelisted_ip + affected_ip_to_report
 
         if affected > 0:
-            self.log_print(f'clean_db_logs - Deleted : Logs {str(affected_rows)} - Default ip {affected_rows_default_ipv4}','green')
+            self.logs.info(f'clean_db_logs - Deleted : Logs {str(affected_rows)} | Default ip {affected_rows_default_ipv4} | WhiteListed IP {affected_whitelisted_ip} | Ip to report {affected_ip_to_report}')
             response = True
 
         return response
@@ -524,6 +571,7 @@ class Base:
 
         system_command = '/sbin/iptables -F'
         os.system(system_command)
+        self.logs.info("iptables has been cleared")
         return None
 
     def ip_tables_isExist(self, ip:str) -> bool:
@@ -604,6 +652,10 @@ class Base:
         for result in result_query:
             db_id_log, intrusion_date, intrusion_service_id, intrustion_detail, db_mod_name, db_ip_address, db_keyword = result
 
+            # If ip is None then loop
+            if db_ip_address is None:
+                continue
+
             # Report the information to HQ
             report_status = self.report_to_HQ(intrusion_date, intrustion_detail, db_ip_address, intrusion_service_id, db_mod_name, db_keyword)
 
@@ -671,30 +723,33 @@ class Base:
 
             response = requests.request(method='GET', url=url, headers=headers, timeout=self.default_intcHQ_timeout)
 
+            if response.status_code in [404, 503]:
+                self.logs.warn(f"INTC_HQ CODE {response.status_code}")
+                return None
+
             # Formatted output
             req = json.loads(response.text)
 
             if 'code' in req:
                 if not req['error']:
-                    if self.DEBUG:
-                        self.log_print(f"INTC_HQ RECEIVE INFORMATION - {ip_address} --> {str(req['code'])} {req['message']}", "green")
+                    self.logs.info(f"INTC_HQ RECEIVE INFORMATION - {ip_address} --> {str(req['code'])} {req['message']}")
                 else:
-                    self.log_print(f"INTC_HQ RECEIVE INFORMATION - {ip_address} --> {str(req['code'])} {req['message']}", "red")
+                    self.logs.warn(f"INTC_HQ RECEIVE INFORMATION - {ip_address} --> {str(req['code'])} {req['message']}")
 
+            self.logs.debug(f"RECIEVED FROM HQ - {req}")
             return req
 
         except KeyError as ke:
-            self.log_print(f'API Error KeyError : {ke}','red')
+            self.logs.critical(f'API Error KeyError : {ke}')
             return None
         except TypeError as te:
-            self.log_print(f'API Error TypeError : {te}','red')
+            self.logs.critical(f'API Error TypeError : {te}')
             return None
         except requests.ReadTimeout as timeout:
-            self.log_print(f'API Error Timeout : {timeout}','red')
+            self.logs.critical(f'API Error Timeout : {timeout}')
             return None
         except requests.ConnectionError as ConnexionError:
-            if self.DEBUG:
-                self.log_print(f'API Connection Error : {ConnexionError}','red')
+            self.logs.critical(f'API Connection Error : {ConnexionError}')
             return None
 
     def report_to_HQ(self, intrusion_datetime:str, intrusion_detail:str, ip_address:str, intrusion_service_id:str, module_name:str, keyword:str) -> bool:
@@ -736,28 +791,31 @@ class Base:
 
             response = requests.request(method='POST', url=url, headers=headers, timeout=self.default_intcHQ_timeout, json=querystring)
 
+            if response.status_code in [404, 503]:
+                self.logs.warn(f"INTC_HQ CODE {response.status_code}")
+                return False
+
             # Formatted output
             req = json.loads(response.text)
 
             if 'code' in req:
                 if req['code'] == 200:
-                    if self.DEBUG:
-                        self.log_print(f"INTC_HQ REPORTED - {ip_address} --> {str(req['code'])} {req['message']}", "green")
+                    self.logs.info(f"INTC_HQ REPORTED - {ip_address} --> {str(req['code'])} {req['message']}")
                 else:
-                    self.log_print(f"INTC_HQ RESPONSE - {ip_address} - {str(req['code'])} {req['message']}", "red")
+                    self.logs.warn(f"INTC_HQ RESPONSE - {ip_address} - {str(req['code'])} {req['message']}")
 
+            self.logs.debug(f"RECIEVED FROM HQ : {req}")
             return True
 
         except KeyError as ke:
-            self.log_print(f'API Error KeyError : {ke}','red')
+            self.logs.critical(f'API Error KeyError : {ke}')
             return False
         except TypeError as te:
-            self.log_print(f'API Error TypeError : {te}','red')
+            self.logs.critical(f'API Error TypeError : {te}')
             return False
         except requests.ReadTimeout as timeout:
-            self.log_print(f'API Error Timeout : {timeout}','red')
+            self.logs.critical(f'API Error Timeout : {timeout}')
             return False
         except requests.ConnectionError as ConnexionError:
-            if self.DEBUG:
-                self.log_print(f'API Connection Error : {ConnexionError}','red')
+            self.logs.critical(f'API Connection Error : {ConnexionError}')
             return False

@@ -52,7 +52,7 @@ class Intercept:
 
         # Charger les exceptions du process en cours
         for key, exception in modules[mod_name].items():
-            if type(exception) == list and key == 'exceptions':
+            if type(exception) == list and key == 'ip_exceptions':
                 for ip_exception in exception:
                     ip_exceptions.append(ip_exception)
 
@@ -65,24 +65,18 @@ class Intercept:
                         if lookup:
                             
                             # Si l'ip est dans liste d'exception globale
-                            if ip in self.Parser.global_ip_exceptions:
-                                self.Base.log_print(f'Global exception - [{ip}] was exempted from the analysis ...', 'red')
+                            if ip in self.Base.global_whitelisted_ip:
+                                self.Base.logs.info(f'Global exception - [{ip}] was exempted from the analysis ...')
 
                             # Si l'ip est dans la liste de l'exception du module
                             elif ip in ip_exceptions:
-                                self.Base.log_print(f'Module "{mod_name}" exception - [{ip}] was exempted from the analysis ...', 'red')
+                                self.Base.logs.info(f'Module "{mod_name}" exception - [{ip}] was exempted from the analysis ...')
 
                             else:
-                                # Report to HQ
-                                #self.Base.report_to_HQ(self.Base.get_sdatetime(), output, ip, service_id, mod_name, filter_name)
+                                # Get Information from HQ and Report to HQ
                                 ab_score, hq_totalReports = self.Base.get_internal_hq_info(ip)
 
-                                # Get ip information from the HQ
-                                # hq_response = self.Base.get_information_from_HQ(ip)
-                                # print(hq_response)
-
                                 if self.Base.db_record_ip(service_id, output, mod_name, ip, filter_name, user):
-                                    self.Base.log_print(f'{mod_name} - {filter_name} - {service_id} - {ip} - {user} - recorded', 'white')
 
                                     if not ab_score is None or not hq_totalReports is None:
                                         ab_score = ab_score if not ab_score is None else 0
@@ -90,10 +84,12 @@ class Intercept:
 
                                         if ab_score >= self.Base.default_intcHQ_jail_abuseipdb_score:
                                             if self.Base.ip_tables_add(mod_name, ip, self.Base.default_intcHQ_jail_duration) > 0:
-                                                self.Base.log_print(f'{mod_name} - HQ - "{ip}" - Jailed for {str(self.Base.default_intcHQ_jail_duration)} seconds | Reports: {str(hq_totalReports)} / Score: {str(ab_score)}', 'red')
+                                                self.Base.logs.info(f'{mod_name} - HQ - "{ip}" - Jailed for {str(self.Base.default_intcHQ_jail_duration)} seconds | Reports: {str(hq_totalReports)} / Score: {str(ab_score)}')
                                         elif hq_totalReports >= self.Base.default_intcHQ_jail_totalReports:
                                             if self.Base.ip_tables_add(mod_name, ip, self.Base.default_intcHQ_jail_duration) > 0:
-                                                self.Base.log_print(f'{mod_name} - HQ - "{ip}" - Jailed for {str(self.Base.default_intcHQ_jail_duration)} seconds | HQ_Reports: {str(hq_totalReports)} / ab_Score {str(ab_score)}', 'red')
+                                                self.Base.logs.info(f'{mod_name} - HQ - "{ip}" - Jailed for {str(self.Base.default_intcHQ_jail_duration)} seconds | HQ_Reports: {str(hq_totalReports)} / ab_Score {str(ab_score)}')
+                                        else:
+                                            self.execute_action(ip, mod_name)
                                     else:
                                         self.execute_action(ip, mod_name)
 
@@ -133,14 +129,14 @@ class Intercept:
                     db_ip, db_attempt = results_ip
                     if db_attempt >= sys_attempt:
                         if self.Base.ip_tables_add(mod_name, db_ip, sys_ban_duration) > 0:
-                            self.Base.log_print(f'{mod_name} - "{db_ip}" - Moving to jail for {str(sys_ban_duration)} seconds', 'red')
+                            self.Base.logs.info(f'{mod_name} - "{db_ip}" - Moving to jail for {str(sys_ban_duration)} seconds')
                     
                     self.Base.clean_iptables()
 
             return None
 
         except KeyError as ke:
-            self.Base.log_print(f'keyError {mod_name} - {__name__} - {self.execute_action.__name__}: key {ke} is not available', 'red')
+            self.Base.logs.critical(f'keyError {mod_name} - {__name__} - {self.execute_action.__name__}: key {ke} is not available')
 
     def get_service_id(self, output:str, mod_name:str) -> str:
         """Retourn le process id
