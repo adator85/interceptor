@@ -37,6 +37,10 @@ class Base:
         self.default_jail_duration  = 120                                       # Default Duration in seconds before the release
         self.default_ipv4           = '0.0.0.0'                                 # Default ipv4 to be used by Interceptor
 
+        self.global_whitelisted_ip:list     = []                                # Global Whitelisted ip
+        self.local_whitelisted_ip:list      = []                                # Local whitelisted ip (by modules)
+        self.whitelisted_ip:list            = []                                # All white listed ip (global and local)
+
         self.api:dict               = {}                                        # Available API's configuration from global.json
 
         self.default_intcHQ_active    = False                                   # Use head quarter information
@@ -501,19 +505,30 @@ class Base:
         """
         response = False
         query = "DELETE FROM logs WHERE ip_address = :ip"
+        query_hq_information = "DELETE FROM hq_information WHERE ip_address = :ip"
         mes_donnees = {'ip': self.default_ipv4}
         default_ip_request = self.db_execute_query(query,mes_donnees)
 
-        query = '''DELETE FROM logs WHERE createdOn <= :datetime'''
+        # Clean whitelisted ip from the database
+        affected_whitelisted_ip = 0
+        for whitelisted_ip in self.whitelisted_ip:
+            my_data = {'ip': whitelisted_ip}
+            whitelisted_fetch = self.db_execute_query(query, my_data)
+            affected_whitelisted_ip += whitelisted_fetch.rowcount
+
+            whitelisted_fetch_hq = self.db_execute_query(query_hq_information, my_data)
+            affected_whitelisted_ip += whitelisted_fetch_hq.rowcount
+
+        query = 'DELETE FROM logs WHERE createdOn <= :datetime'
         mes_donnees = {'datetime': self.minus_one_hour(24)}
         r_datetime = self.db_execute_query(query, mes_donnees)
 
         affected_rows = r_datetime.rowcount
         affected_rows_default_ipv4 = default_ip_request.rowcount
-        affected = affected_rows + affected_rows_default_ipv4
+        affected = affected_rows + affected_rows_default_ipv4 + affected_whitelisted_ip
 
         if affected > 0:
-            self.logs.info(f'clean_db_logs - Deleted : Logs {str(affected_rows)} - Default ip {affected_rows_default_ipv4}')
+            self.logs.info(f'clean_db_logs - Deleted : Logs {str(affected_rows)} | Default ip {affected_rows_default_ipv4} | WhiteListed IP {affected_whitelisted_ip}')
             response = True
 
         return response

@@ -52,7 +52,7 @@ class Intercept:
 
         # Charger les exceptions du process en cours
         for key, exception in modules[mod_name].items():
-            if type(exception) == list and key == 'exceptions':
+            if type(exception) == list and key == 'ip_exceptions':
                 for ip_exception in exception:
                     ip_exceptions.append(ip_exception)
 
@@ -65,7 +65,7 @@ class Intercept:
                         if lookup:
                             
                             # Si l'ip est dans liste d'exception globale
-                            if ip in self.Parser.global_ip_exceptions:
+                            if ip in self.Base.global_whitelisted_ip:
                                 self.Base.logs.info(f'Global exception - [{ip}] was exempted from the analysis ...')
 
                             # Si l'ip est dans la liste de l'exception du module

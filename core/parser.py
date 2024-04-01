@@ -20,6 +20,11 @@ class Parser:
         self.load_json_configuration()
         self.parse_json()
 
+        self.Base.whitelisted_ip = list(set(self.Base.local_whitelisted_ip + self.Base.global_whitelisted_ip))
+        self.Base.logs.debug(f"Global Whitelisted ip : {self.Base.global_whitelisted_ip}")
+        self.Base.logs.debug(f"Local Whitelisted ip : {self.Base.local_whitelisted_ip}")
+        self.Base.logs.debug(f"All Whitelisted ip : {self.Base.whitelisted_ip}")
+
         self.intercept_initialization()
 
         if self.errors:
@@ -63,9 +68,10 @@ class Parser:
                         self.Base.default_intcHQ_jail_duration = self.global_api[key_exception]['jail_duration']
 
         self.Base.logs.debug(f"Global configuration file : {self.global_configuration}")
-        self.Base.logs.debug(f"Global IP Exceptions : {self.global_ip_exceptions}")
         self.Base.logs.debug(f"Global API : {self.Base.api}")
         self.Base.logs.debug(f"Global API 2 : {self.global_api}")
+
+        self.Base.global_whitelisted_ip = self.global_ip_exceptions.copy()
 
         return None
 
@@ -94,6 +100,17 @@ class Parser:
 
         self.Base.logs.debug(f"Local modules files loaded : {self.filenames}")
         self.Base.logs.debug(f"Module loaded : {self.modules}")
+
+        final_ip_list:list = []
+
+        for mod_name, value in self.modules.items():
+            for key in self.modules[mod_name]:
+                if key == 'ip_exceptions':
+                    if type(self.modules[mod_name][key]) == list:
+                        l = self.modules[mod_name][key]
+                        final_ip_list = list(set(final_ip_list + l))
+
+        self.Base.local_whitelisted_ip = final_ip_list.copy()
 
         return no_files
 
