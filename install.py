@@ -15,7 +15,7 @@ import os, shutil
 class Setup():
 
     def __init__(self) -> None:
-        self.__version__ = '1.0.0'
+        self.__version__ = '1.0.1'
 
         if not self.is_root():
             self.iprint('/!\\ user must be root /!\\')
@@ -62,7 +62,7 @@ class Setup():
 
     def is_python_module_missing(self, modules:list) -> bool:
 
-        is_missing = False
+        is_missing = True
 
         for module in modules:
             if find_spec(module) is None:
