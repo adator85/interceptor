@@ -21,6 +21,9 @@ class Cron:
         self.Base.create_thread(self.cron, func_args=(self.Base.clean_db_logs, 60 * 60), func_name='clean_db_logs')
 
         if intc_hq_status and intc_hq_report:
+            # Say first hello to HQ
+            self.Base.say_hello_to_hq()
+
             # Activate thread reporting to HQ
             self.Base.create_thread(self.cron, func_args=(self.Base.thread_report_to_HQ, 5), func_name='Report to HQ')
 

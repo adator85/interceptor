@@ -819,3 +819,60 @@ class Base:
         except requests.ConnectionError as ConnexionError:
             self.logs.critical(f'API Connection Error : {ConnexionError}')
             return False
+
+    def say_hello_to_hq(self) -> bool:
+
+        try:
+            api_name        = 'intc_hq'
+
+            if not api_name in self.api:
+                self.logs.error(f"{api_name} not found in self.api variable")
+                return False
+            elif not self.api[api_name]['active']:
+                self.logs.error(f"The status of the API is set to : {self.api[api_name]['active']}")
+                return False
+            elif not self.api[api_name]['report']:
+                self.logs.error(f"The status of the report API is set to : {self.api[api_name]['report']}")
+                return False
+
+            url = f"{self.api[api_name]['url']}hello/" if 'url' in self.api[api_name] else None
+            api_key = self.api[api_name]['api_key'] if 'api_key' in self.api[api_name] else None
+
+            if url is None:
+                self.logs.error(f"The URL of the API is : {url}")
+                return False
+
+            headers = {
+                'Accept': 'application/json',
+                'Content-Type': 'application/json',
+                'user-agent': 'Interceptor Client',
+                'Key': api_key
+            }
+
+            response = requests.request(method='GET', url=url, headers=headers, timeout=self.default_intcHQ_timeout)
+
+            if response.status_code in [404, 503]:
+                self.logs.warn(f"INTC_HQ CODE {response.status_code}")
+                return False
+
+            # Formatted output
+            req = json.loads(response.text)
+
+            self.logs.info(f"INTC_HQ RESPONSE TO HELLO --> status {str(req['code'])} - {req['message']}")
+
+            self.logs.debug(f"RECIEVED FROM HQ : {req}")
+
+            return True
+
+        except KeyError as ke:
+            self.logs.critical(f'API Error KeyError : {ke}')
+            return False
+        except TypeError as te:
+            self.logs.critical(f'API Error TypeError : {te}')
+            return False
+        except requests.ReadTimeout as timeout:
+            self.logs.critical(f'API Error Timeout : {timeout}')
+            return False
+        except requests.ConnectionError as ConnexionError:
+            self.logs.critical(f'API Connection Error : {ConnexionError}')
+            return False
