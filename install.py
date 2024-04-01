@@ -32,6 +32,13 @@ class Setup():
 
         self.cmd_venv_command = ['python3', '-m', 'venv', self.virtual_env_folder_name]
         self.cmd_debian_requirements = ['apt', 'install', '-y', 'python3-pip', 'python3-venv']
+        self.cmd_pip_update = [f'{self.install_folder}{os.sep}{self.virtual_env_folder_name}{os.sep}bin{os.sep}python', 
+                               '-m', 
+                               'pip', 
+                               'install', 
+                               '--upgrade', 
+                               'pip'
+                               ]
 
         self.cmd_python_requirements = [f'{self.install_folder}{os.sep}{self.virtual_env_folder_name}{os.sep}bin{os.sep}pip', 'install']
         self.cmd_python_requirements.extend(self.required_python_modules)
@@ -40,9 +47,16 @@ class Setup():
         self.cmd_start_service = ['systemctl','start','Interceptor']
         self.cmd_status_service = ['systemctl','status','Interceptor']
 
+        # Install python packages
         self.run_subprocess(self.cmd_debian_requirements)
 
+        # Install python virtual env
         self.run_subprocess(self.cmd_venv_command)
+
+        # Update pip
+        self.run_subprocess(self.cmd_pip_update)
+
+        # Install missing python module
         if self.is_python_module_missing(self.required_python_modules):
             self.run_subprocess(self.cmd_python_requirements)
 
