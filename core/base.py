@@ -828,16 +828,20 @@ class Base:
             api_name        = 'intc_hq'
 
             if not api_name in self.api:
+                self.logs.error(f"{api_name} not found in self.api variable")
                 return False
             elif not self.api[api_name]['active']:
+                self.logs.error(f"The status of the API is set to : {self.api[api_name]['active']}")
                 return False
             elif not self.api[api_name]['report']:
+                self.logs.error(f"The status of the report API is set to : {self.api[api_name]['report']}")
                 return False
 
             url = f"{self.api[api_name]['url']}hello/" if 'url' in self.api[api_name] else None
             api_key = self.api[api_name]['api_key'] if 'api_key' in self.api[api_name] else None
 
             if url is None:
+                self.logs.error(f"The URL of the API is : {url}")
                 return False
 
             headers = {
