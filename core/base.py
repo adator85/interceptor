@@ -26,7 +26,7 @@ class Base:
 
     def __init__(self) -> None:
 
-        self.VERSION                = '2.4.0'                                   # MAJOR.MINOR.BATCH
+        self.VERSION                = '2.4.1'                                   # MAJOR.MINOR.BATCH
         self.CURRENT_PYTHON_VERSION = python_version()                          # Current python version
         self.DATE_FORMAT            = '%Y-%m-%d %H:%M:%S'                       # The date format
         self.HOSTNAME               = socket.gethostname()                      # Hostname of the local machine
@@ -519,16 +519,33 @@ class Base:
             whitelisted_fetch_hq = self.db_execute_query(query_hq_information, my_data)
             affected_whitelisted_ip += whitelisted_fetch_hq.rowcount
 
+        query_hq_info_to_report = """SELECT 
+                        hir.id as 'id',
+                        l.ip_address as 'ip_address'
+                    FROM hq_information_to_report hir
+                    LEFT JOIN logs l ON l.id = hir.id_log
+                    WHERE l.id IS NULL
+                    """
+        hq_info_to_report_fetch = self.db_execute_query(query_hq_info_to_report)
+        query_delete = "DELETE FROM hq_information_to_report WHERE id = :id"
+
+        affected_ip_to_report = 0
+        for record in hq_info_to_report_fetch.fetchall():
+            db_id, db_ip_address = record
+            if db_ip_address is None:
+                r_delete_to_report = self.db_execute_query(query_delete, {'id': db_id})
+                affected_ip_to_report += r_delete_to_report.rowcount
+
         query = 'DELETE FROM logs WHERE createdOn <= :datetime'
         mes_donnees = {'datetime': self.minus_one_hour(24)}
         r_datetime = self.db_execute_query(query, mes_donnees)
 
         affected_rows = r_datetime.rowcount
         affected_rows_default_ipv4 = default_ip_request.rowcount
-        affected = affected_rows + affected_rows_default_ipv4 + affected_whitelisted_ip
+        affected = affected_rows + affected_rows_default_ipv4 + affected_whitelisted_ip + affected_ip_to_report
 
         if affected > 0:
-            self.logs.info(f'clean_db_logs - Deleted : Logs {str(affected_rows)} | Default ip {affected_rows_default_ipv4} | WhiteListed IP {affected_whitelisted_ip}')
+            self.logs.info(f'clean_db_logs - Deleted : Logs {str(affected_rows)} | Default ip {affected_rows_default_ipv4} | WhiteListed IP {affected_whitelisted_ip} | Ip to report {affected_ip_to_report}')
             response = True
 
         return response
@@ -634,6 +651,10 @@ class Base:
 
         for result in result_query:
             db_id_log, intrusion_date, intrusion_service_id, intrustion_detail, db_mod_name, db_ip_address, db_keyword = result
+
+            # If ip is None then loop
+            if db_ip_address is None:
+                continue
 
             # Report the information to HQ
             report_status = self.report_to_HQ(intrusion_date, intrustion_detail, db_ip_address, intrusion_service_id, db_mod_name, db_keyword)
