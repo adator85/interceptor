@@ -58,8 +58,6 @@ class Base:
         self.engine, self.cursor = self.db_init()                               # Init Engine & Cursor
         self.__db_create_tables()                                               # Create tables
 
-        # Ping HQ to see if ok or not
-        self.say_hello_to_hq()
         self.logs.debug(f"Module Base Initiated")
 
         return None
@@ -821,7 +819,7 @@ class Base:
         except requests.ConnectionError as ConnexionError:
             self.logs.critical(f'API Connection Error : {ConnexionError}')
             return False
-        
+
     def say_hello_to_hq(self) -> bool:
 
         try:
