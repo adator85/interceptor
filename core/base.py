@@ -751,6 +751,9 @@ class Base:
         except requests.ConnectionError as ConnexionError:
             self.logs.critical(f'API Connection Error : {ConnexionError}')
             return None
+        except json.decoder.JSONDecodeError as jde:
+            self.logs.critical(f'JSon Decoder Error : {jde}')
+            return None
 
     def report_to_HQ(self, intrusion_datetime:str, intrusion_detail:str, ip_address:str, intrusion_service_id:str, module_name:str, keyword:str) -> bool:
 
@@ -819,6 +822,9 @@ class Base:
         except requests.ConnectionError as ConnexionError:
             self.logs.critical(f'API Connection Error : {ConnexionError}')
             return False
+        except json.decoder.JSONDecodeError as jde:
+            self.logs.critical(f'JSon Decoder Error : {jde}')
+            return False
 
     def say_hello_to_hq(self) -> bool:
 
@@ -875,4 +881,7 @@ class Base:
             return False
         except requests.ConnectionError as ConnexionError:
             self.logs.critical(f'API Connection Error : {ConnexionError}')
+            return False
+        except json.decoder.JSONDecodeError as jde:
+            self.logs.critical(f'JSon Decoder Error : {jde}')
             return False
