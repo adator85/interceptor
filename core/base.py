@@ -728,41 +728,50 @@ class Base:
             return None
 
         for result in result_query:
-            db_id_log, intrusion_date, intrusion_service_id, intrustion_detail, db_mod_name, db_ip_address, db_keyword = result
+            try:
+                db_id_log, intrusion_date, intrusion_service_id, intrustion_detail, db_mod_name, db_ip_address, db_keyword = result
 
-            # If ip is None then loop
-            if db_ip_address is None:
-                continue
+                # If ip is None then loop
+                if db_ip_address is None:
+                    continue
 
-            # Report the information to HQ
-            hq_response = self.report_to_HQ_v2(intrusion_date, intrustion_detail, db_ip_address, intrusion_service_id, db_mod_name, db_keyword)
+                # Report the information to HQ
+                hq_response = self.report_to_HQ_v2(intrusion_date, intrustion_detail, db_ip_address, intrusion_service_id, db_mod_name, db_keyword)
 
-            if hq_response is None:
-                continue
+                if hq_response is None or not hq_response:
+                    continue
 
-            # Delete the record from local db
-            query_data = {'id_to_delete': db_id_log}
-            self.db_execute_query(query_delete, query_data)
+                if not 'ab_score' in hq_response and not 'hq_totalReports' in hq_response:
+                    continue
 
-            ab_score:int = hq_response['ab_score'] if type(self.convert_to_integer(hq_response['ab_score'])) == int else 0
-            hq_totalReports:int = hq_response['hq_totalReports'] if type(self.convert_to_integer(hq_response['hq_totalReports'])) == int else 0
+                # Delete the record from local db
+                query_data = {'id_to_delete': db_id_log}
+                self.db_execute_query(query_delete, query_data)
 
-            # Check if ip is available locally
-            param_get_hq_info_select = {'ip_address': db_ip_address}
-            fetch_is_ip_available = self.db_execute_query(query_get_hq_info_select, param_get_hq_info_select)
-            result_is_ip_available = fetch_is_ip_available.fetchone()
+                ab_score:int = hq_response['ab_score'] if type(self.convert_to_integer(hq_response['ab_score'])) == int else 0
+                hq_totalReports:int = hq_response['hq_totalReports'] if type(self.convert_to_integer(hq_response['hq_totalReports'])) == int else 0
 
-            # if ip not available then record it
-            if result_is_ip_available is None:
-                param_get_hq_info_insert = {'createdOn': current_date, 'updatedOn': current_date, 'ip_address': db_ip_address, 'ab_score': ab_score, 'hq_totalReports': hq_totalReports}
-                self.db_execute_query(query_get_hq_info_insert, param_get_hq_info_insert)
+                # Check if ip is available locally
+                param_get_hq_info_select = {'ip_address': db_ip_address}
+                fetch_is_ip_available = self.db_execute_query(query_get_hq_info_select, param_get_hq_info_select)
+                result_is_ip_available = fetch_is_ip_available.fetchone()
 
-            # if ip is available then update the record
-            else:
-                param_get_hq_info_update = {'ab_score': ab_score, 'hq_totalReports': hq_totalReports, 'updatedOn': current_date, 'ip_address': db_ip_address}
-                self.db_execute_query(query_get_hq_info_update, param_get_hq_info_update)
+                # if ip not available then record it
+                if result_is_ip_available is None:
+                    param_get_hq_info_insert = {'createdOn': current_date, 'updatedOn': current_date, 'ip_address': db_ip_address, 'ab_score': ab_score, 'hq_totalReports': hq_totalReports}
+                    self.db_execute_query(query_get_hq_info_insert, param_get_hq_info_insert)
 
-            time.sleep(1.5)
+                # if ip is available then update the record
+                else:
+                    param_get_hq_info_update = {'ab_score': ab_score, 'hq_totalReports': hq_totalReports, 'updatedOn': current_date, 'ip_address': db_ip_address}
+                    self.db_execute_query(query_get_hq_info_update, param_get_hq_info_update)
+
+                time.sleep(1.5)
+
+            except TypeError as te:
+                self.logs.critical(f"Type Error: {te}")
+            except KeyError as ke:
+                self.logs.critical(f"Key Error: {ke}")
 
         return None
 
