@@ -26,7 +26,7 @@ class Base:
 
     def __init__(self) -> None:
 
-        self.VERSION                = '2.4.1'                                   # MAJOR.MINOR.BATCH
+        self.VERSION                = '2.4.2'                                   # MAJOR.MINOR.BATCH
         self.CURRENT_PYTHON_VERSION = python_version()                          # Current python version
         self.DATE_FORMAT            = '%Y-%m-%d %H:%M:%S'                       # The date format
         self.HOSTNAME               = socket.gethostname()                      # Hostname of the local machine
@@ -769,9 +769,9 @@ class Base:
                 time.sleep(1.5)
 
             except TypeError as te:
-                self.logs.critical(f"Type Error: {te}")
+                self.logs.critical(f"Type Error: {te} | {hq_response}")
             except KeyError as ke:
-                self.logs.critical(f"Key Error: {ke}")
+                self.logs.critical(f"Key Error: {ke} | {hq_response}")
 
         return None
 
