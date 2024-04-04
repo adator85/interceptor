@@ -692,6 +692,83 @@ class Base:
 
         return None
 
+    def thread_report_to_HQ_v2(self) -> None:
+        """### 1. Get data from local database
+        ### 2. Send it to HQ every 1.5 seconds
+        ### 3. Check whether the ip is in the table hq_information
+        ###     3.1 Record the ip and the information received from HQ (if no record available)
+        ###     3.2 Edit the information if the record is available
+        ### 4. Delete the record from the local database
+        """
+        current_date = self.get_sdatetime()
+
+        query_hq_info_to_report = '''SELECT 
+                        l.id as 'id_log',
+                        l.createdOn as 'log_createdOn',
+                        l.intrusion_service_id,
+                        l.intrusion_detail,
+                        l.module_name,
+                        l.ip_address,
+                        l.keyword
+                    FROM hq_information_to_report hir
+                    LEFT JOIN logs l ON l.id = hir.id_log
+                    '''
+
+        query_get_hq_info_select = 'SELECT id FROM hq_information WHERE ip_address = :ip_address'
+        query_get_hq_info_insert = '''INSERT INTO hq_information (createdOn, updatedOn, ip_address, ab_score, hq_totalReports) 
+        VALUES (:createdOn, :updatedOn, :ip_address, :ab_score, :hq_totalReports)
+        '''
+        query_get_hq_info_update = 'UPDATE hq_information SET ab_score = :ab_score, hq_totalReports = :hq_totalReports, updatedOn = :updatedOn WHERE ip_address = :ip_address'
+        query_delete = 'DELETE FROM hq_information_to_report WHERE id_log = :id_to_delete'
+
+        fetch_query = self.db_execute_query(query_hq_info_to_report)
+
+        result_query = fetch_query.fetchall()
+        if not result_query:
+            return None
+
+        for result in result_query:
+            db_id_log, intrusion_date, intrusion_service_id, intrustion_detail, db_mod_name, db_ip_address, db_keyword = result
+
+            # If ip is None then loop
+            if db_ip_address is None:
+                continue
+
+            # Report the information to HQ
+            report_status = self.report_to_HQ_v2(intrusion_date, intrustion_detail, db_ip_address, intrusion_service_id, db_mod_name, db_keyword)
+
+            if report_status is None:
+                continue
+
+            # Delete the record from local db
+            query_data = {'id_to_delete': db_id_log}
+            self.db_execute_query(query_delete, query_data)
+
+            # Get ip_address information from HQ
+            hq_response = self.get_information_from_HQ(db_ip_address)
+
+            ab_score:int = hq_response['ab_score'] if type(self.convert_to_integer(hq_response['ab_score'])) == int else 0
+            hq_totalReports:int = hq_response['hq_totalReports'] if type(self.convert_to_integer(hq_response['hq_totalReports'])) == int else 0
+
+            # Check if ip is available locally
+            param_get_hq_info_select = {'ip_address': db_ip_address}
+            fetch_is_ip_available = self.db_execute_query(query_get_hq_info_select, param_get_hq_info_select)
+            result_is_ip_available = fetch_is_ip_available.fetchone()
+
+            # if ip not available then record it
+            if result_is_ip_available is None:
+                param_get_hq_info_insert = {'createdOn': current_date, 'updatedOn': current_date, 'ip_address': db_ip_address, 'ab_score': ab_score, 'hq_totalReports': hq_totalReports}
+                self.db_execute_query(query_get_hq_info_insert, param_get_hq_info_insert)
+
+            # if ip is available then update the record
+            else:
+                param_get_hq_info_update = {'ab_score': ab_score, 'hq_totalReports': hq_totalReports, 'updatedOn': current_date, 'ip_address': db_ip_address}
+                self.db_execute_query(query_get_hq_info_update, param_get_hq_info_update)
+
+            time.sleep(1.5)
+
+        return None
+
     def get_information_from_HQ(self, ip_address: str) -> Union[dict, None]:
 
         try:
@@ -809,6 +886,107 @@ class Base:
 
             self.logs.debug(f"RECIEVED FROM HQ : {req}")
             return True
+
+        except KeyError as ke:
+            self.logs.critical(f'API Error KeyError : {ke}')
+            return False
+        except TypeError as te:
+            self.logs.critical(f'API Error TypeError : {te}')
+            return False
+        except requests.ReadTimeout as timeout:
+            self.logs.critical(f'API Error Timeout : {timeout}')
+            return False
+        except requests.ConnectionError as ConnexionError:
+            self.logs.critical(f'API Connection Error : {ConnexionError}')
+            return False
+        except json.decoder.JSONDecodeError as jde:
+            self.logs.critical(f'JSon Decoder Error : {jde}')
+            return False
+
+    def report_to_HQ_v2(self, intrusion_datetime:str, intrusion_detail:str, ip_address:str, intrusion_service_id:str, module_name:str, keyword:str) -> Union[dict, None]:
+        """daSend information to HQ to record the intrusion and receive back from the HQ
+        2 information about the abuseipdb_score and hq total reports
+
+        Args:
+            intrusion_datetime (str): Intrusion datetime
+            intrusion_detail (str): Intrusion full detail
+            ip_address (str): the report ip address
+            intrusion_service_id (str): The intrusion service id
+            module_name (str): The module name
+            keyword (str): The keyword captured
+
+        Returns:
+            Union[dict, None]: The dictionary with all information or None
+        """
+
+        '''
+        1 Report information to the HQ via the API
+        2 get folowing information:
+            - ab_score: the abuseipdb score or None
+            - hq_totalReports: the HQ totalReports or None
+        '''
+
+        try:
+            api_name        = 'intc_hq'
+
+            if not api_name in self.api:
+                return None
+            elif not self.api[api_name]['active']:
+                return None
+            elif not self.api[api_name]['report']:
+                return None
+            elif ip_address == self.default_ipv4:
+                return None
+
+            url = f"{self.api[api_name]['url']}report_v2/" if 'url' in self.api[api_name] else None
+            api_key = self.api[api_name]['api_key'] if 'api_key' in self.api[api_name] else None
+
+            if url is None and api_key is None:
+                return None
+
+            querystring = {
+                'intrusion_datetime': intrusion_datetime,
+                'intrusion_detail': intrusion_detail,
+                'intrusion_service_id': str(intrusion_service_id),
+                'ip_address': ip_address,
+                'reported_hostname': self.HOSTNAME,
+                'module_name': module_name,
+                'keyword': keyword
+            }
+
+            headers = {
+                'Accept': 'application/json',
+                'Content-Type': 'application/json',
+                'user-agent': 'Interceptor Client',
+                'Key': api_key
+            }
+
+            response = requests.request(method='POST', url=url, headers=headers, timeout=self.default_intcHQ_timeout, json=querystring)
+
+            if response.status_code in [404, 503]:
+                self.logs.warn(f"INTC_HQ CODE {response.status_code}")
+                return None
+
+            # Formatted output
+            # Expected response : {error: False, code: 200, message: "The message", ab_score: 100|None, hq_totalReports: 5}
+            req = json.loads(response.text)
+
+            api_error = bool(req['error'])
+            api_code = int(req['code'])
+            api_message = req['message']
+            api_ab_score = req['ab_score']
+            api_hq_totalReports = req['hq_totalReports']
+
+            if 'error' in req:
+                if api_error:
+                    self.logs.error(f"INTC_HQ RESPONSE [{api_code}] - {ip_address} --> {api_message}")
+                    return None
+                else:
+                    self.logs.info(f"INTC_HQ RESPONSE [{api_code}] - {ip_address} --> ab_score: {api_ab_score} | hq_reports: {api_hq_totalReports}")
+
+            self.logs.debug(f"RECIEVED FROM HQ : {req}")
+
+            return req
 
         except KeyError as ke:
             self.logs.critical(f'API Error KeyError : {ke}')
