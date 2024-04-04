@@ -735,17 +735,14 @@ class Base:
                 continue
 
             # Report the information to HQ
-            report_status = self.report_to_HQ_v2(intrusion_date, intrustion_detail, db_ip_address, intrusion_service_id, db_mod_name, db_keyword)
+            hq_response = self.report_to_HQ_v2(intrusion_date, intrustion_detail, db_ip_address, intrusion_service_id, db_mod_name, db_keyword)
 
-            if report_status is None:
+            if hq_response is None:
                 continue
 
             # Delete the record from local db
             query_data = {'id_to_delete': db_id_log}
             self.db_execute_query(query_delete, query_data)
-
-            # Get ip_address information from HQ
-            hq_response = self.get_information_from_HQ(db_ip_address)
 
             ab_score:int = hq_response['ab_score'] if type(self.convert_to_integer(hq_response['ab_score'])) == int else 0
             hq_totalReports:int = hq_response['hq_totalReports'] if type(self.convert_to_integer(hq_response['hq_totalReports'])) == int else 0
