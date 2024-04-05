@@ -1,5 +1,5 @@
+modules/*.json
 .intvenv*
 __pycache__*
 db*
 logs*
-modules/*.json
