@@ -54,6 +54,9 @@ class Base:
         self.hb_active:bool = True                                              # Define heartbeat variable
         self.running_threads:list[threading.Thread] = []                        # Define running_threads variable
 
+        self.CHAIN_NAME = 'INTERCEPTOR'                                         # Define the iptables chain name
+        self.iptables_chain_create()                                            # Create the iptables chain
+
         self.init_log_system()                                                  # Init log system
         self.engine, self.cursor = self.db_init()                               # Init Engine & Cursor
         self.__db_create_tables()                                               # Create tables
@@ -479,27 +482,6 @@ class Base:
 
         return no_files
 
-    def clean_iptables(self) -> None:
-        """Clean iptables db table and iptables
-        release remote ip address when the duration is expired
-        """
-        query = f'''SELECT ip_address, createdOn, duration, module_name 
-                    FROM iptables
-                '''
-
-        cursorResult = self.db_execute_query(query)
-        r = cursorResult.fetchall()
-
-        for result in r:
-            db_ip, db_datetime, db_duration, db_module_name = result
-            datetime_object = self.convert_to_datetime(db_datetime)
-            dtime_final = self.add_secondes_to_date(datetime_object, db_duration)
-
-            if self.get_datetime() > dtime_final:
-                self.db_remove_iptables(db_ip)
-                self.ip_tables_remove(db_ip)
-                self.logs.info(f'{db_module_name} - "{db_ip}" - released from jail')
-
     def clean_db_logs(self) -> bool:
         """Clean logs that they have more than 24 hours
         """
@@ -550,12 +532,53 @@ class Base:
 
         return response
 
+    #############################
+    # START OF IPTABLES METHODS #
+    #############################
+
+    def iptables_chain_create(self) -> bool:
+        """Create a chain for Interceptor
+        """
+
+        chain_name = self.CHAIN_NAME
+
+        # Check if the chain already exists
+        if self.iptables_chain_isExist(chain_name):
+            self.logs.debug(f"Iptables chain [{chain_name}] already exist !")
+            return False
+
+        system_command = f'/sbin/iptables -N {chain_name}'
+        os.system(system_command)
+        self.logs.debug(f"Iptables chain [{chain_name}] created.")
+
+        return True
+
+    def iptables_chain_isExist(self, name:str) -> bool:
+        """Check if the chain name exist or not
+
+        Args:
+            name (str): The name of the chain
+
+        Returns:
+            bool: True if the chain name already exist.
+        """
+
+        check_rule = run(['/sbin/iptables','-N', name],stdout=PIPE, stderr=PIPE).returncode == 0
+        response = False
+
+        if check_rule:
+            response = True
+
+        return response
+
     def ip_tables_add(self, module_name:str, ip:str, duration_seconds:int) -> int:
+
+        chain_name = self.CHAIN_NAME
 
         if self.ip_tables_isExist(ip):
             return 0
 
-        system_command = '/sbin/iptables -A INPUT -s {} -j REJECT'.format(ip)
+        system_command = f'/sbin/iptables -A {chain_name} -s {ip} -j REJECT'
         os.system(system_command)
         rowcount = self.db_record_iptables(module_name, ip, duration_seconds)
         self.db_record_iptables_logs(module_name, ip, duration_seconds)
@@ -563,13 +586,17 @@ class Base:
 
     def ip_tables_remove(self, ip:str) -> None:
 
-        system_command = '/sbin/iptables -D INPUT -s {} -j REJECT'.format(ip)
+        chain_name = self.CHAIN_NAME
+
+        system_command = f'/sbin/iptables -D {chain_name} -s {ip} -j REJECT'
         os.system(system_command)
         return None
 
     def ip_tables_reset(self) -> None:
 
-        system_command = '/sbin/iptables -F'
+        chain_name = self.CHAIN_NAME
+
+        system_command = f'/sbin/iptables -F {chain_name}'
         os.system(system_command)
         self.logs.info("iptables has been cleared")
         return None
@@ -583,15 +610,40 @@ class Base:
         Returns:
             bool: True si l'ip existe déja
         """
-
+        chain_name = self.CHAIN_NAME
         # check_rule = run(['/sbin/iptables','-C','INPUT','-s',ip,'-j','REJECT'],stdout=subprocess.PIPE, stderr=subprocess.PIPE).returncode == 0
-        check_rule = run(['/sbin/iptables','-C','INPUT','-s',ip,'-j','REJECT'],stdout=PIPE, stderr=PIPE).returncode == 0
+        check_rule = run(['/sbin/iptables','-C', chain_name,'-s', ip,'-j','REJECT'],stdout=PIPE, stderr=PIPE).returncode == 0
         response = False
 
         if check_rule:
             response = True
 
         return response
+
+    def clean_iptables(self) -> None:
+        """Clean iptables db table and iptables
+        release remote ip address when the duration is expired
+        """
+        query = f'''SELECT ip_address, createdOn, duration, module_name 
+                    FROM iptables
+                '''
+
+        cursorResult = self.db_execute_query(query)
+        r = cursorResult.fetchall()
+
+        for result in r:
+            db_ip, db_datetime, db_duration, db_module_name = result
+            datetime_object = self.convert_to_datetime(db_datetime)
+            dtime_final = self.add_secondes_to_date(datetime_object, db_duration)
+
+            if self.get_datetime() > dtime_final:
+                self.db_remove_iptables(db_ip)
+                self.ip_tables_remove(db_ip)
+                self.logs.info(f'{db_module_name} - "{db_ip}" - released from jail')
+
+        return None
+
+    # END OF IPTABLES METHODS #
 
     def get_internal_hq_info(self, ip_address:str) -> Union[tuple[int, int], tuple[None, None]]:
         """Fetch local database to retrieve ab_score and hq_totalReports
