@@ -54,10 +54,11 @@ class Base:
         self.hb_active:bool = True                                              # Define heartbeat variable
         self.running_threads:list[threading.Thread] = []                        # Define running_threads variable
 
+        self.init_log_system()                                                  # Init log system
+
         self.CHAIN_NAME = 'INTERCEPTOR'                                         # Define the iptables chain name
         self.iptables_chain_create()                                            # Create the iptables chain
 
-        self.init_log_system()                                                  # Init log system
         self.engine, self.cursor = self.db_init()                               # Init Engine & Cursor
         self.__db_create_tables()                                               # Create tables
 
