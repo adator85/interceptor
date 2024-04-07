@@ -812,6 +812,8 @@ class Base:
             if url is None:
                 self.logs.error(f"The URL of the API is : {url}")
                 return False
+            
+            url = url + self.VERSION
 
             headers = {
                 'Accept': 'application/json',
