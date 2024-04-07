@@ -26,7 +26,7 @@ class Base:
 
     def __init__(self) -> None:
 
-        self.VERSION                = '2.4.2'                                   # MAJOR.MINOR.BATCH
+        self.VERSION                = '2.4.3'                                   # MAJOR.MINOR.BATCH
         self.CURRENT_PYTHON_VERSION = python_version()                          # Current python version
         self.DATE_FORMAT            = '%Y-%m-%d %H:%M:%S'                       # The date format
         self.HOSTNAME               = socket.gethostname()                      # Hostname of the local machine
