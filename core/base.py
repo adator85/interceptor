@@ -1,5 +1,5 @@
 from subprocess import run, PIPE
-import os, threading, time, socket, json, requests, logging
+import os, threading, time, socket, json, requests, logging, sys
 from datetime import datetime, timedelta
 from sqlalchemy import create_engine, Engine, Connection, CursorResult
 from sqlalchemy.sql import text
@@ -543,6 +543,12 @@ class Base:
 
         chain_name = self.CHAIN_NAME
 
+        self.iptables_remove_existing_rules()
+
+        # If chain_name equal to INPUT then do not create chain
+        if chain_name == 'INPUT':
+            return False
+
         # Check if the chain already exists
         if self.iptables_chain_isExist(chain_name):
             self.logs.debug(f"Iptables chain [{chain_name}] already exist !")
@@ -550,6 +556,10 @@ class Base:
 
         system_command = f'/sbin/iptables -N {chain_name}'
         os.system(system_command)
+
+        add_chain_to_input = f'/sbin/iptables -A INPUT -j {chain_name}'
+        os.system(add_chain_to_input)
+
         self.logs.debug(f"Iptables chain [{chain_name}] created.")
 
         return True
@@ -571,6 +581,28 @@ class Base:
             response = True
 
         return response
+
+    def iptables_count_interceptor_occurence(self) -> int:
+
+        run_command = run(['/sbin/iptables', '-S'], capture_output=True, text=True)
+        output = run_command.stdout.splitlines()
+        number_of_occurence:list = []
+
+        for int_occurence in output:
+            if '-A INPUT -j INTERCEPTOR' in int_occurence:
+                number_of_occurence.append(int_occurence)
+
+        return len(number_of_occurence)
+
+    def iptables_remove_existing_rules(self) -> bool:
+
+        number_of_occurence = self.iptables_count_interceptor_occurence()
+        chain_name = self.CHAIN_NAME
+
+        for i in range(0, number_of_occurence):
+            os.system(f'/sbin/iptables -D INPUT -j {chain_name}')
+
+        return True
 
     def ip_tables_add(self, module_name:str, ip:str, duration_seconds:int) -> int:
 
