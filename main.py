@@ -20,10 +20,16 @@ def main():
         while BaseInstance.hb_active:
             time.sleep(5)
 
+    except KeyboardInterrupt as ke:
+        BaseInstance.logs.info(f"|| System interrupted by the user ||")
+        print("|| System interrupted by the user ||")
+
     finally:
         for subprocess in IProcInstance.subprocess:
             BaseInstance.logs.debug(f'Terminate subprocess {subprocess}')
             subprocess.terminate()
+
+        BaseInstance.ip_tables_reset()
 
 if __name__ == "__main__":
     main()
