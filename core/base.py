@@ -26,7 +26,7 @@ class Base:
 
     def __init__(self) -> None:
 
-        self.VERSION                = '2.4.4'                                   # MAJOR.MINOR.BATCH
+        self.VERSION                = '2.4.5'                                   # MAJOR.MINOR.BATCH
         self.CURRENT_PYTHON_VERSION = python_version()                          # Current python version
         self.DATE_FORMAT            = '%Y-%m-%d %H:%M:%S'                       # The date format
         self.HOSTNAME               = socket.gethostname()                      # Hostname of the local machine
@@ -547,18 +547,17 @@ class Base:
 
         # If chain_name equal to INPUT then do not create chain
         if chain_name == 'INPUT':
+            self.logs.debug(f"Default chain [INPUT]")
             return False
 
-        # Check if the chain already exists
-        if self.iptables_chain_isExist(chain_name):
-            self.logs.debug(f"Iptables chain [{chain_name}] already exist !")
-            return False
-
+        # Create the chain
         system_command = f'/sbin/iptables -N {chain_name}'
         os.system(system_command)
+        self.logs.debug(f"Creating chain: [{chain_name}]")
 
         add_chain_to_input = f'/sbin/iptables -A INPUT -j {chain_name}'
         os.system(add_chain_to_input)
+        self.logs.debug(f"Adding the chain [{chain_name}] to INPUT")
 
         self.logs.debug(f"Iptables chain [{chain_name}] created.")
 
@@ -629,8 +628,20 @@ class Base:
 
         chain_name = self.CHAIN_NAME
 
+        # clean ip in the chain
         system_command = f'/sbin/iptables -F {chain_name}'
         os.system(system_command)
+        self.logs.info(f"Removing IPs from chain: [{chain_name}]")
+
+        # Delete existing rules
+        self.iptables_remove_existing_rules()
+        self.logs.info(f"Removing rules from INPUT: [{chain_name}]")
+
+        # Remove chain
+        system_command = f'/sbin/iptables -X {chain_name}'
+        os.system(system_command)
+        self.logs.info(f"Removing chain: [{chain_name}]")
+
         self.logs.info("iptables has been cleared")
         return None
 
