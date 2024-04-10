@@ -29,7 +29,7 @@ class Base:
         self.HOSTNAME               = socket.gethostname()                      # Hostname of the local machine
         self.IPV4                   = socket.gethostbyname(self.HOSTNAME)       # Local ipv4 of the local machine
         self.PULSE                  = 5                                         # Pulse in seconds
-        self.DEBUG_LEVEL            = logging.DEBUG                             # Debug variable pour afficher les outputs
+        self.DEBUG_LEVEL            = logging.INFO                              # Debug variable pour afficher les outputs
         self.default_attempt        = 4                                         # Default attempt before jail
         self.default_jail_duration  = 120                                       # Default Duration in seconds before the release
         self.default_ipv4           = '0.0.0.0'                                 # Default ipv4 to be used by Interceptor
