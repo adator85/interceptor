@@ -10,8 +10,6 @@ class Parser:
         self.global_configuration:dict[any, dict] = {}  # Global configuration
         self.global_ip_exceptions:list = []             # Global ip exceptions
 
-        self.global_api:dict[any, dict] = {}            # Global API for ip checks
-        
         self.module_names:list = []                     # List of module names () ==> ["sshd","dovecot","proftpd"]
         self.filenames:list = []                        # Liste contenant le nom des fichiers de configuration json
         self.errors:list = []                           # check errors
@@ -48,28 +46,26 @@ class Parser:
             if key == 'api':
                 for key_api, value_api in value.items():
                     self.Base.api[key_api] = value_api
+                    if key_api == 'intc_hq':
+                        for api_value_key in self.Base.api[key_api]:
+                            if 'active' == api_value_key:
+                                self.Base.default_intcHQ_active = self.Base.api[key_api][api_value_key]
+                            if 'report' == api_value_key:
+                                self.Base.default_intcHQ_report = self.Base.api[key_api][api_value_key]
+                            if 'abuseipdb_jail_score' == api_value_key:
+                                self.Base.default_intcHQ_jail_abuseipdb_score = self.Base.api[key_api][api_value_key]
+                            if 'intc_hq_jail_totalReports' == api_value_key:
+                                self.Base.default_intcHQ_jail_totalReports = self.Base.api[key_api][api_value_key]
+                            if 'jail_duration' == api_value_key:
+                                self.Base.default_intcHQ_jail_duration = self.Base.api[key_api][api_value_key]
 
             for key_exception, value_ip_exceptions in value.items():
                 if type(value_ip_exceptions) == list and key_exception == 'ip_exceptions':
                     for global_ip_exception in value_ip_exceptions:
                         self.global_ip_exceptions.append(global_ip_exception)
 
-                if type(value_ip_exceptions) == dict and key_exception == 'intc_hq':
-                    self.global_api[key_exception] = value_ip_exceptions
-                    if 'active' in self.global_api[key_exception]:
-                        self.Base.default_intcHQ_active = bool(self.global_api[key_exception]['active'])
-                    if 'report' in self.global_api[key_exception]:
-                        self.Base.default_intcHQ_report = bool(self.global_api[key_exception]['report'])
-                    if 'abuseipdb_jail_score' in self.global_api[key_exception]:
-                        self.Base.default_intcHQ_jail_abuseipdb_score = self.global_api[key_exception]['abuseipdb_jail_score']
-                    if 'intc_hq_jail_totalReports' in self.global_api[key_exception]:
-                        self.Base.default_intcHQ_jail_totalReports = self.global_api[key_exception]['intc_hq_jail_totalReports']
-                    if 'jail_duration' in self.global_api[key_exception]:
-                        self.Base.default_intcHQ_jail_duration = self.global_api[key_exception]['jail_duration']
-
         self.Base.logs.debug(f"Global configuration file : {self.global_configuration}")
         self.Base.logs.debug(f"Global API : {self.Base.api}")
-        self.Base.logs.debug(f"Global API 2 : {self.global_api}")
 
         self.Base.global_whitelisted_ip = self.global_ip_exceptions.copy()
 

@@ -1,5 +1,5 @@
 from subprocess import run, PIPE
-import os, threading, time, socket, json, requests, logging, sys
+import os, sys, threading, time, socket, json, requests, logging
 from datetime import datetime, timedelta
 from sqlalchemy import create_engine, Engine, Connection, CursorResult
 from sqlalchemy.sql import text
@@ -17,22 +17,19 @@ class Base:
     - Abuseipdb interactions methods
     '''
 
-    __COLORS:dict = {'white': '\033[97m', 
-                'green': '\033[92m', 
-                'red': '\033[91m',
-                'yellow': '\033[93m',
-                'reset':'\033[0m'
-                }
-
     def __init__(self) -> None:
 
-        self.VERSION                = '2.4.5'                                   # MAJOR.MINOR.BATCH
+        if not self.is_root():
+            print('/!\\ Interceptor must be executed as root /!\\')
+            sys.exit(1)
+
+        self.VERSION                = '2.4.6'                                   # MAJOR.MINOR.BATCH
         self.CURRENT_PYTHON_VERSION = python_version()                          # Current python version
         self.DATE_FORMAT            = '%Y-%m-%d %H:%M:%S'                       # The date format
         self.HOSTNAME               = socket.gethostname()                      # Hostname of the local machine
         self.IPV4                   = socket.gethostbyname(self.HOSTNAME)       # Local ipv4 of the local machine
         self.PULSE                  = 5                                         # Pulse in seconds
-        self.DEBUG_LEVEL            = logging.INFO                              # Debug variable pour afficher les outputs
+        self.DEBUG_LEVEL            = logging.DEBUG                             # Debug variable pour afficher les outputs
         self.default_attempt        = 4                                         # Default attempt before jail
         self.default_jail_duration  = 120                                       # Default Duration in seconds before the release
         self.default_ipv4           = '0.0.0.0'                                 # Default ipv4 to be used by Interceptor
@@ -67,7 +64,11 @@ class Base:
         return None
 
     def init_log_system(self) -> None:
-
+        """Init system logging
+        - Initiat logging library
+        - Create logs folder if not available
+        - Configure the logs attribut
+        """
         # Create folder if not available
         logs_directory = f'logs{os.sep}'
         if not os.path.exists(f'{logs_directory}'):
@@ -82,6 +83,17 @@ class Base:
         self.logs.debug("-" * 16)
 
         return None
+
+    def is_root(self) -> bool:
+        """Check if the code is running by a root user
+
+        Returns:
+            bool: True if root
+        """
+        if os.geteuid() == 0:
+            return True
+        else:
+            return False
 
     def get_unixtime(self)->int:
         """Get Unixtime in int format
@@ -170,6 +182,10 @@ class Base:
         result = date_time + timedelta(seconds=seconds_duration)
 
         return result
+
+    #################################
+    # BEGINNING OF DATABASE METHODS #
+    #################################
 
     def db_init(self) -> tuple[Engine, Connection]:
         """Initiat DB Connexion
@@ -413,76 +429,6 @@ class Base:
 
         return r.rowcount
 
-    def log_print(self, string:str, color:str = None) -> None:
-        """Print logs in the terminal and record it in a file
-
-        Args:
-            string (str): the log message
-            color (str): the color to be used in the terminal
-        """
-        reset = self.__COLORS['reset']
-        isExist_color = False
-
-        if color is None:
-            print(f'{self.get_sdatetime()}: {string}')
-
-        for key_color, value_color in self.__COLORS.items():
-            if key_color == color:
-                print(f'{value_color}{self.get_sdatetime()}: {string}{reset}')
-                isExist_color = True
-
-        if not isExist_color:
-            print(f'{self.get_sdatetime()}: {string}')
-
-        logs_directory = f'logs{os.sep}'
-        logs_full_path = f'{logs_directory}intercept.log'
-
-        with open(logs_full_path, 'a+') as log:
-            log.write(f'{self.get_sdatetime()}: {string}\n')
-            log.close()
-
-        return None
-
-    def create_thread(self, func:object, func_args: tuple = (), func_name:str ='') -> None:
-        try:
-            current_func_name = func.__name__
-
-            th = threading.Thread(target=func, args=func_args, name=str(current_func_name), daemon=True)
-            th.start()
-
-            self.running_threads.append(th)
-            self.logs.info(f"Thread ID : {str(th.ident)} | Thread name : {th.getName()} | Function name: {str(func_name)} | Running Threads : {len(threading.enumerate())}")
-
-        except AssertionError as ae:
-            self.logs.critical(f"Assertion Error -> {ae}")
-
-    def heartbeat(self, beat:float) -> None:
-        """Run periodic action every {beat} seconds
-        this method must be run in a thread
-
-        Args:
-            beat (float): Duration between every action
-        """
-        while self.hb_active:
-            time.sleep(beat)
-            self.clean_iptables()
-            self.logs.debug(f"Running Heartbeat every {beat} seconds")
-
-        return None
-
-    def get_no_filters_files(self) -> int:
-
-        path = f'modules{os.sep}'
-        no_files = 0
-
-        list_files_in_directory = os.listdir(path)
-
-        for file in list_files_in_directory:
-            if file.endswith('.json'):
-                no_files += 1
-
-        return no_files
-
     def clean_db_logs(self) -> bool:
         """Clean logs that they have more than 24 hours
         """
@@ -533,9 +479,57 @@ class Base:
 
         return response
 
-    #############################
-    # START OF IPTABLES METHODS #
-    #############################
+    # END OF DATABASE METHODS #
+
+    ################################
+    # BEGINNING OF THREADS METHODS #
+    ################################
+
+    def create_thread(self, func:object, func_args: tuple = (), func_name:str ='') -> None:
+        try:
+            current_func_name = func.__name__
+
+            th = threading.Thread(target=func, args=func_args, name=str(current_func_name), daemon=True)
+            th.start()
+
+            self.running_threads.append(th)
+            self.logs.info(f"Thread ID : {str(th.ident)} | Thread name : {th.getName()} | Function name: {str(func_name)} | Running Threads : {len(threading.enumerate())}")
+
+        except AssertionError as ae:
+            self.logs.critical(f"Assertion Error -> {ae}")
+
+    def heartbeat(self, beat:float) -> None:
+        """Run periodic action every {beat} seconds
+        this method must be run in a thread
+
+        Args:
+            beat (float): Duration between every action
+        """
+        while self.hb_active:
+            time.sleep(beat)
+            self.clean_iptables()
+            self.logs.debug(f"Running Heartbeat every {beat} seconds")
+
+        return None
+
+    def get_no_filters_files(self) -> int:
+
+        path = f'modules{os.sep}'
+        no_files = 0
+
+        list_files_in_directory = os.listdir(path)
+
+        for file in list_files_in_directory:
+            if file.endswith('.json'):
+                no_files += 1
+
+        return no_files
+
+    # END OF THREADS METHODS #
+
+    #################################
+    # BEGINNING OF IPTABLES METHODS #
+    #################################
 
     def iptables_chain_create(self) -> bool:
         """Create a chain for Interceptor
