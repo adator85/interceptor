@@ -23,22 +23,26 @@ class Base:
             print('/!\\ Interceptor must be executed as root /!\\')
             sys.exit(1)
 
-        self.VERSION                = '2.4.6'                                   # MAJOR.MINOR.BATCH
+        self.appConfig = self.__load_app_config()
+
+        self.VERSION                = self.getAppConfig('version')              # MAJOR.MINOR.BATCH
+        self.DEBUG_LEVEL            = self.getAppConfig('debug_level')          # Debug variable pour afficher les outputs
+        self.PULSE                  = self.getAppConfig('pulse')                # Pulse in seconds
+        self.hq_communication_freq  = self.getAppConfig('hq_communication_freq')# Frequency in seconds to send data to HQ
+        self.default_attempt        = self.getAppConfig('jail_attempt')         # Default attempt before jail
+        self.default_jail_duration  = self.getAppConfig('jail_duration')        # Default Duration in seconds before the release
+
         self.CURRENT_PYTHON_VERSION = python_version()                          # Current python version
-        self.DATE_FORMAT            = '%Y-%m-%d %H:%M:%S'                       # The date format
         self.HOSTNAME               = socket.gethostname()                      # Hostname of the local machine
         self.IPV4                   = socket.gethostbyname(self.HOSTNAME)       # Local ipv4 of the local machine
-        self.PULSE                  = 5                                         # Pulse in seconds
-        self.DEBUG_LEVEL            = logging.INFO                              # Debug variable pour afficher les outputs
-        self.default_attempt        = 4                                         # Default attempt before jail
-        self.default_jail_duration  = 120                                       # Default Duration in seconds before the release
-        self.default_ipv4           = '0.0.0.0'                                 # Default ipv4 to be used by Interceptor
+
+        self.DATE_FORMAT            = '%Y-%m-%d %H:%M:%S'                       # The date format
+        self.api:dict               = {}                                        # Available API's configuration from global.json
+        self.default_ipv4           = "0.0.0.0"                                 # Default ipv4 to be used by Interceptor
 
         self.global_whitelisted_ip:list     = []                                # Global Whitelisted ip
         self.local_whitelisted_ip:list      = []                                # Local whitelisted ip (by modules)
         self.whitelisted_ip:list            = []                                # All white listed ip (global and local)
-
-        self.api:dict               = {}                                        # Available API's configuration from global.json
 
         self.default_intcHQ_active    = False                                   # Use head quarter information
         self.default_intcHQ_report    = False                                   # Report to the HQ intrusions
@@ -53,7 +57,7 @@ class Base:
 
         self.init_log_system()                                                  # Init log system
 
-        self.CHAIN_NAME = 'INTERCEPTOR'                                         # Define the iptables chain name
+        self.CHAIN_NAME = "INTERCEPTOR"                                         # Define the iptables chain name
         self.iptables_chain_create()                                            # Create the iptables chain
 
         self.engine, self.cursor = self.db_init()                               # Init Engine & Cursor
@@ -62,6 +66,29 @@ class Base:
         self.logs.debug(f"Module Base Initiated")
 
         return None
+
+    def __load_app_config(self) -> dict[str, str]:
+        """Load the main configuration of the app
+
+        Returns:
+            dict[str, str]: The key and the value of the configuration
+        """
+
+        filename = f'core{os.sep}configuration.json'
+        app_configuration:dict[str, str] = {}
+
+        with open(filename, 'r') as configuration:
+            app_configuration = json.load(configuration)
+
+        return app_configuration
+
+    def getAppConfig(self, key: str) -> Union[str, int]:
+
+        config = self.appConfig
+
+        response = config.get(key)
+
+        return response
 
     def init_log_system(self) -> None:
         """Init system logging
@@ -77,7 +104,7 @@ class Base:
         # Init logs object
         self.logs = logging
         self.logs.basicConfig(level=self.DEBUG_LEVEL,
-                              filename='logs/interceptor_v2.log',
+                              filename='logs/interceptor.log',
                               format='%(asctime)s - %(levelname)s - %(filename)s - %(funcName)s - %(message)s')
 
         self.logs.debug("-" * 16)
@@ -426,8 +453,9 @@ class Base:
         mes_donnees = {'ip': ip}
 
         r = self.db_execute_query(query, mes_donnees)
+        rowcount = r.rowcount
 
-        return r.rowcount
+        return rowcount
 
     def clean_db_logs(self) -> bool:
         """Clean logs that they have more than 24 hours
@@ -942,3 +970,30 @@ class Base:
         except json.decoder.JSONDecodeError as jde:
             self.logs.critical(f'JSon Decoder Error : {jde}')
             return False
+
+    def send_to_hq(self) -> None:
+
+        try:
+            api_name = 'intc_hq'
+            api: dict = self.api.get(api_name) if type(self.api.get(api_name)) == dict else None
+
+            if api is None:
+                return None
+
+            url = f"{api.get('url')}ping/"
+            api_key = api.get('api_key')
+
+
+            headers: dict[str, str] = {
+                'Accept': 'application/json',
+                'Content-Type': 'application/json',
+                'user-agent': 'Interceptor Client',
+                'Key': api_key
+            }
+
+            response = requests.request(method='GET', url=url, headers=headers, timeout=self.default_intcHQ_timeout)
+
+            return None
+
+        except AttributeError as ae:
+            self.logs.error(f'Attribute error: {ae}')
