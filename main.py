@@ -9,9 +9,9 @@ def main():
     from core.cron import Cron
     from core.interceptprocess import InterceptProcess
 
-    BaseInstance = Base()                                           # Initiat the main class
-    ParserInstance = Parser(BaseInstance)                           # Initiat the parser class
-    CronInstance = Cron(BaseInstance, ParserInstance)               # Initial the cron class
+    BaseInstance = Base()                                           # Init the base class
+    ParserInstance = Parser(BaseInstance)                           # Init the parser class
+    CronInstance = Cron(BaseInstance, ParserInstance)               # Init the cron class
     CronInstance.init()                                             # Start cron jobs
     IProcInstance = InterceptProcess(BaseInstance, ParserInstance)  # Start SubProcesses
 

@@ -1,0 +1,8 @@
+{
+    "version": "2.4.7",
+    "pulse": 5,
+    "hq_communication_freq": 4,
+    "debug_level": 20,
+    "jail_attempt": 4,
+    "jail_duration": 120
+}

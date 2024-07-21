@@ -148,6 +148,7 @@ class Parser:
         hn += f'#    IPV4                   : {self.Base.IPV4}\n'
         hn += f'#    Interceptor Version    : {self.Base.VERSION}\n'
         hn += f'#    Python Version         : {self.Base.CURRENT_PYTHON_VERSION}\n'
+        hn += f'#    Debug Level            : {self.Base.logs.getLevelName(self.Base.getAppConfig("debug_level"))}\n'
         hn += f'#    Modules loaded         :\n'
 
         for file in self.filenames:
